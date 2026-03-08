@@ -23,6 +23,7 @@ interface ChatSidebarProps {
   onOpenSettings: () => void;
   onOpenMemory: () => void;
   onOpenPromptLibrary: () => void;
+  onOpenProfile: () => void;
   currentPlan: string;
   onUpgrade: () => void;
   isLoggedIn: boolean;
