@@ -1,8 +1,9 @@
 import { motion } from "framer-motion";
-import { Bot, User, Copy, RefreshCw, ThumbsUp, ThumbsDown, Check } from "lucide-react";
+import { Bot, User, Copy, RefreshCw, ThumbsUp, ThumbsDown, Check, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Message } from "@/lib/chatData";
+import { SpeakButton } from "./VoiceMode";
 
 interface MessageBubbleProps {
   message: Message;
@@ -31,9 +32,7 @@ export default function MessageBubble({ message, onRegenerate }: MessageBubblePr
     >
       <div
         className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
-          isUser
-            ? "gradient-btn"
-            : "bg-card border border-border"
+          isUser ? "gradient-btn" : "bg-card border border-border"
         }`}
       >
         {isUser ? (
@@ -44,6 +43,18 @@ export default function MessageBubble({ message, onRegenerate }: MessageBubblePr
       </div>
 
       <div className={`max-w-[75%] min-w-0 ${isUser ? "text-right" : ""}`}>
+        {/* Files attached */}
+        {message.files && message.files.length > 0 && (
+          <div className="flex gap-2 mb-2 flex-wrap">
+            {message.files.map((f) => (
+              <div key={f.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted text-xs">
+                <span>📎</span>
+                <span className="text-foreground truncate max-w-[120px]">{f.name}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div
           className={`inline-block rounded-2xl px-4 py-3 text-sm leading-relaxed ${
             isUser
@@ -54,11 +65,35 @@ export default function MessageBubble({ message, onRegenerate }: MessageBubblePr
           {isUser ? (
             <p>{message.content}</p>
           ) : (
-            <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-pre:bg-muted prose-pre:rounded-lg prose-code:text-primary prose-code:font-mono prose-headings:text-foreground">
+            <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-pre:bg-muted prose-pre:rounded-xl prose-pre:border prose-pre:border-border prose-code:text-primary prose-code:font-mono prose-headings:text-foreground prose-strong:text-foreground prose-a:text-primary">
               <ReactMarkdown>{message.content}</ReactMarkdown>
             </div>
           )}
         </div>
+
+        {/* Sources / Citations */}
+        {!isUser && message.sources && message.sources.length > 0 && (
+          <div className="mt-2 space-y-1.5">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Sources</p>
+            {message.sources.map((src, i) => (
+              <a
+                key={i}
+                href={src.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-start gap-2 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors group"
+              >
+                <ExternalLink className="w-3 h-3 mt-0.5 text-muted-foreground flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-foreground group-hover:text-primary transition-colors truncate">
+                    {src.title}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground line-clamp-1">{src.snippet}</p>
+                </div>
+              </a>
+            ))}
+          </div>
+        )}
 
         <div className={`flex items-center gap-1 mt-1.5 ${isUser ? "justify-end" : ""}`}>
           <span className="text-[10px] text-muted-foreground mr-1">{time}</span>
@@ -67,6 +102,7 @@ export default function MessageBubble({ message, onRegenerate }: MessageBubblePr
               <button onClick={copyText} className="p-1 rounded hover:bg-muted transition-colors" title="Copy">
                 {copied ? <Check className="w-3 h-3 text-primary" /> : <Copy className="w-3 h-3 text-muted-foreground" />}
               </button>
+              <SpeakButton content={message.content} />
               <button onClick={onRegenerate} className="p-1 rounded hover:bg-muted transition-colors" title="Regenerate">
                 <RefreshCw className="w-3 h-3 text-muted-foreground" />
               </button>

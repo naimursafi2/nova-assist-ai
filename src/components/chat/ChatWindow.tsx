@@ -8,9 +8,11 @@ interface ChatWindowProps {
   messages: Message[];
   isTyping: boolean;
   onPromptClick: (prompt: string) => void;
+  activeMode: string;
+  onSelectMode: (mode: string) => void;
 }
 
-export default function ChatWindow({ messages, isTyping, onPromptClick }: ChatWindowProps) {
+export default function ChatWindow({ messages, isTyping, onPromptClick, activeMode, onSelectMode }: ChatWindowProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -18,7 +20,7 @@ export default function ChatWindow({ messages, isTyping, onPromptClick }: ChatWi
   }, [messages, isTyping]);
 
   if (messages.length === 0) {
-    return <WelcomeScreen onPromptClick={onPromptClick} />;
+    return <WelcomeScreen onPromptClick={onPromptClick} activeMode={activeMode} onSelectMode={onSelectMode} />;
   }
 
   return (
