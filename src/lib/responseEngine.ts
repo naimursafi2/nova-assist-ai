@@ -603,7 +603,7 @@ export function generateSmartResponse(context: ResponseContext): string {
   if (intent === "who_are_you") {
     if (isBanglish) return wrapBanglishResponse("who_are_you");
     if (language === "bn") return wrapBanglaResponse("who_are_you");
-    return `I'm **Nova AI** — a next-generation AI workspace assistant! 🚀\n\nI can:\n- **Answer questions** on programming, tech, and general topics\n- **Write & debug code** in 15+ languages\n- **Explain concepts** clearly with examples\n- **Help with writing** — essays, emails, content\n- **Translate** between languages\n- **Understand Banglish** naturally\n\nHow can I help you today?`;
+    return `I'm **Aura AI** — a next-generation AI workspace assistant! 🚀\n\nI can:\n- **Answer questions** on programming, tech, and general topics\n- **Write & debug code** in 15+ languages\n- **Explain concepts** clearly with examples\n- **Help with writing** — essays, emails, content\n- **Translate** between languages\n- **Understand Banglish** naturally\n\nHow can I help you today?`;
   }
 
   if (intent === "thanks") {
