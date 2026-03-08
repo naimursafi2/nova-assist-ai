@@ -42,6 +42,7 @@ export default function Index() {
   const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [messageCount, setMessageCount] = useState(0);
   const streamingRef = useRef(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
