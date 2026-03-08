@@ -188,8 +188,7 @@ export default function Index() {
   };
 
   const handleSelectMode = useCallback((mode: string) => {
-    const { aiModes } = require("@/lib/chatData");
-    const modeData = aiModes.find((m: any) => m.id === mode);
+    const modeData = allModes.find((m) => m.id === mode);
     if (modeData) {
       const requiredLevel = planLevel[modeData.requiredPlan] || 0;
       const userLevel = planLevel[currentPlan] || 0;
