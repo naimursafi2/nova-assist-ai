@@ -5,6 +5,7 @@ export interface Message {
   timestamp: Date;
   sources?: Source[];
   files?: UploadedFile[];
+  images?: string[];
 }
 
 export interface Source {

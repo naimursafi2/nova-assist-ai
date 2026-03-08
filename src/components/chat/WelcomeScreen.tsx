@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Sparkles, ArrowRight } from "lucide-react";
+import { Sparkles, ArrowRight, Upload, Image, Clock, Zap, Command } from "lucide-react";
 import { aiModes } from "@/lib/chatData";
 import ModeSwitcher from "./ModeSwitcher";
 import QuickToolsPanel from "./QuickToolsPanel";
@@ -8,17 +8,20 @@ interface WelcomeScreenProps {
   onPromptClick: (prompt: string) => void;
   activeMode: string;
   onSelectMode: (mode: string) => void;
+  onOpenCommandPalette: () => void;
+  recentChatsCount: number;
 }
 
-export default function WelcomeScreen({ onPromptClick, activeMode, onSelectMode }: WelcomeScreenProps) {
+export default function WelcomeScreen({ onPromptClick, activeMode, onSelectMode, onOpenCommandPalette, recentChatsCount }: WelcomeScreenProps) {
   const currentMode = aiModes.find((m) => m.id === activeMode) || aiModes[0];
 
   return (
     <div className="flex-1 overflow-y-auto scrollbar-thin">
-      <div className="max-w-3xl mx-auto px-4 py-8 sm:py-12 space-y-8">
+      <div className="max-w-4xl mx-auto px-4 py-6 sm:py-10 space-y-8">
         {/* Floating orbs */}
         <div className="fixed top-20 left-1/4 w-64 h-64 rounded-full bg-primary/5 blur-3xl animate-orb pointer-events-none" />
         <div className="fixed bottom-20 right-1/4 w-48 h-48 rounded-full bg-accent/5 blur-3xl animate-orb-delayed pointer-events-none" />
+        <div className="fixed top-1/2 right-1/3 w-32 h-32 rounded-full bg-primary/3 blur-2xl animate-orb pointer-events-none" />
 
         {/* Hero */}
         <motion.div
@@ -28,26 +31,66 @@ export default function WelcomeScreen({ onPromptClick, activeMode, onSelectMode 
           className="text-center relative"
         >
           <motion.div
-            initial={{ scale: 0.8 }}
-            animate={{ scale: 1 }}
+            initial={{ scale: 0.8, rotate: -10 }}
+            animate={{ scale: 1, rotate: 0 }}
             transition={{ duration: 0.5, type: "spring" }}
             className="w-20 h-20 rounded-3xl gradient-btn mx-auto flex items-center justify-center glow mb-5 animate-float"
           >
             <Sparkles className="w-10 h-10 text-primary-foreground" />
           </motion.div>
-          <h1 className="text-3xl sm:text-4xl font-bold font-display mb-2">
+          <h1 className="text-3xl sm:text-5xl font-bold font-display mb-3">
             <span className="gradient-text">Good {getGreeting()}</span>
           </h1>
-          <p className="text-sm sm:text-base text-muted-foreground max-w-md mx-auto">
-            I'm Nova AI — your intelligent workspace assistant. Pick a mode, use a tool, or just start chatting.
+          <p className="text-sm sm:text-base text-muted-foreground max-w-lg mx-auto leading-relaxed">
+            I'm Nova AI — your intelligent workspace assistant. Pick a mode, upload files, analyze images, or just start chatting in any language.
           </p>
+
+          {/* Command palette hint */}
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            onClick={onOpenCommandPalette}
+            className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl glass border border-border hover:border-primary/20 transition-all text-xs text-muted-foreground hover:text-foreground"
+          >
+            <Command className="w-3.5 h-3.5" />
+            <span>Press</span>
+            <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px]">⌘K</kbd>
+            <span>for quick actions</span>
+          </motion.button>
+        </motion.div>
+
+        {/* Stats bar */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="flex items-center justify-center gap-6 sm:gap-8"
+        >
+          {[
+            { icon: <Zap className="w-3.5 h-3.5 text-primary" />, label: "6 AI Modes", value: "" },
+            { icon: <Clock className="w-3.5 h-3.5 text-accent" />, label: `${recentChatsCount} Chats`, value: "" },
+            { icon: <Image className="w-3.5 h-3.5 text-success" />, label: "Image Analysis", value: "" },
+            { icon: <Upload className="w-3.5 h-3.5 text-warning" />, label: "File Upload", value: "" },
+          ].map((stat, i) => (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2 + i * 0.05 }}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground"
+            >
+              {stat.icon}
+              <span>{stat.label}</span>
+            </motion.div>
+          ))}
         </motion.div>
 
         {/* Mode Switcher */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.25 }}
         >
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">🎯 AI Modes</h3>
           <ModeSwitcher activeMode={activeMode} onSelectMode={onSelectMode} />
@@ -57,7 +100,7 @@ export default function WelcomeScreen({ onPromptClick, activeMode, onSelectMode 
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.35 }}
         >
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             {currentMode.icon} {currentMode.label} — Try these
@@ -68,7 +111,7 @@ export default function WelcomeScreen({ onPromptClick, activeMode, onSelectMode 
                 key={prompt.title}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.35 + i * 0.07 }}
+                transition={{ delay: 0.4 + i * 0.06 }}
                 onClick={() => onPromptClick(prompt.title + ": " + prompt.description)}
                 className="glass border border-border rounded-xl p-3.5 text-left hover:border-primary/20 transition-all group hover:glow"
               >
@@ -93,6 +136,32 @@ export default function WelcomeScreen({ onPromptClick, activeMode, onSelectMode 
         >
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">⚡ Quick Tools</h3>
           <QuickToolsPanel onSelectTool={onPromptClick} />
+        </motion.div>
+
+        {/* Capabilities cards */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="grid grid-cols-1 sm:grid-cols-3 gap-3"
+        >
+          {[
+            { icon: "🌐", title: "Multilingual", desc: "Bangla, English, Hindi, Arabic, Spanish & more. Banglish supported!" },
+            { icon: "📄", title: "Document Chat", desc: "Upload PDFs, DOCX, TXT files and ask questions about them." },
+            { icon: "🖼️", title: "Image Analysis", desc: "Upload images for AI-powered visual understanding and description." },
+          ].map((cap, i) => (
+            <motion.div
+              key={cap.title}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.65 + i * 0.08 }}
+              className="p-4 rounded-xl glass border border-border"
+            >
+              <span className="text-2xl mb-2 block">{cap.icon}</span>
+              <p className="text-sm font-semibold text-foreground mb-1">{cap.title}</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">{cap.desc}</p>
+            </motion.div>
+          ))}
         </motion.div>
       </div>
     </div>
