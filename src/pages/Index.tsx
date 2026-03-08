@@ -8,6 +8,7 @@ import ChatWindow from "@/components/chat/ChatWindow";
 import ChatInput from "@/components/chat/ChatInput";
 import ModeSwitcher from "@/components/chat/ModeSwitcher";
 import SettingsModal from "@/components/chat/SettingsModal";
+import ProfilePanel from "@/components/chat/ProfilePanel";
 import MemoryPanel from "@/components/chat/MemoryPanel";
 import PromptLibraryModal from "@/components/chat/PromptLibraryModal";
 import CommandPalette from "@/components/chat/CommandPalette";
