@@ -595,9 +595,9 @@ export function generateSmartResponse(context: ResponseContext): string {
   if (intent === "greeting") {
     if (isBanglish) return wrapBanglishResponse("greeting");
     if (language === "bn") return wrapBanglaResponse("greeting");
-    if (language === "hi") return `नमस्ते! 👋 मैं **Nova AI** — आपका intelligent assistant!\n\nमैं मदद कर सकता हूं:\n- 💻 **प्रोग्रामिंग** — JavaScript, Python, React\n- 📝 **लेखन** — Article, email\n- 💡 **आइडिया** — Brainstorming\n\nक्या मदद चाहिए? 🚀`;
-    if (language === "ar") return `مرحباً! 👋 أنا **Nova AI** — مساعدك الذكي!\n\nيمكنني المساعدة في:\n- 💻 **البرمجة**\n- 📝 **الكتابة**\n- 💡 **الأفكار**\n\nكيف يمكنني مساعدتك؟ 🚀`;
-    return `Hey there! 👋 I'm **Nova AI**, your intelligent assistant.\n\nI can help you with:\n- 💻 **Programming** — JavaScript, Python, React, C++, Java, and 15+ languages\n- 📝 **Writing** — Articles, emails, summaries\n- 🔬 **Research** — Analysis and insights\n- 💡 **Ideas** — Brainstorming\n\nWhat would you like to work on? 🚀`;
+    if (language === "hi") return `नमस्ते! 👋 मैं **Aura AI** — आपका intelligent assistant!\n\nमैं मदद कर सकता हूं:\n- 💻 **प्रोग्रामिंग** — JavaScript, Python, React\n- 📝 **लेखन** — Article, email\n- 💡 **आइडिया** — Brainstorming\n\nक्या मदद चाहिए? 🚀`;
+    if (language === "ar") return `مرحباً! 👋 أنا **Aura AI** — مساعدك الذكي!\n\nيمكنني المساعدة في:\n- 💻 **البرمجة**\n- 📝 **الكتابة**\n- 💡 **الأفكار**\n\nكيف يمكنني مساعدتك؟ 🚀`;
+    return `Hey there! 👋 I'm **Aura AI**, your intelligent assistant.\n\nI can help you with:\n- 💻 **Programming** — JavaScript, Python, React, C++, Java, and 15+ languages\n- 📝 **Writing** — Articles, emails, summaries\n- 🔬 **Research** — Analysis and insights\n- 💡 **Ideas** — Brainstorming\n\nWhat would you like to work on? 🚀`;
   }
 
   if (intent === "who_are_you") {
