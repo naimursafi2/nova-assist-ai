@@ -189,7 +189,7 @@ export default function ChatInput({
           </button>
         </div>
         <p className="text-center text-[10px] text-muted-foreground mt-2">
-          Nova AI can make mistakes. Consider checking important information.
+          Aura AI can make mistakes. Consider checking important information.
         </p>
       </div>
     </div>

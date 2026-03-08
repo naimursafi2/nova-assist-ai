@@ -37,7 +37,7 @@ export default function CommandPalette({ isOpen, onClose, onAction }: CommandPal
     { id: "upload-file", icon: <Upload className="w-4 h-4" />, label: "Upload File", description: "Attach a document", category: "Actions", action: "upload-file" },
     { id: "upload-image", icon: <Image className="w-4 h-4" />, label: "Upload Image", description: "Analyze an image with AI", category: "Actions", action: "upload-image" },
     { id: "web-search", icon: <Globe className="w-4 h-4" />, label: "Toggle Web Search", description: "Search the web for answers", category: "Actions", action: "toggle-web-search" },
-    { id: "voice", icon: <Mic className="w-4 h-4" />, label: "Voice Mode", description: "Speak to Nova AI", category: "Actions", action: "voice" },
+    { id: "voice", icon: <Mic className="w-4 h-4" />, label: "Voice Mode", description: "Speak to Aura AI", category: "Actions", action: "voice" },
     { id: "language", icon: <Languages className="w-4 h-4" />, label: "Change Language", description: "Switch response language", category: "Actions", action: "language" },
     // AI Modes
     ...aiModes.map((m) => ({

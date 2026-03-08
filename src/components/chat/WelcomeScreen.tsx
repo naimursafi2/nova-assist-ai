@@ -51,7 +51,7 @@ export default function WelcomeScreen({
             <span className="gradient-text">Good {getGreeting()}</span>
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground max-w-lg mx-auto leading-relaxed">
-            Nova AI — your intelligent workspace combining Chat, Research, Writing, Slides, and more into one powerful assistant.
+            Aura AI — your intelligent workspace combining Chat, Research, Writing, Slides, and more into one powerful assistant.
           </p>
 
           {/* Plan badge + Command palette */}

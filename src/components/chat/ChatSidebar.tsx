@@ -80,7 +80,7 @@ export default function ChatSidebar({
                 <span className="text-xs font-bold text-primary-foreground">N</span>
               </div>
               <div>
-                <h2 className="text-sm font-bold font-display gradient-text">Nova AI</h2>
+                <h2 className="text-sm font-bold font-display gradient-text">Aura AI</h2>
                 <p className={`text-[9px] font-semibold ${planColor[currentPlan]}`}>{planLabel[currentPlan]} Plan</p>
               </div>
             </div>
