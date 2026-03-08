@@ -19,7 +19,7 @@ export default function ModelSelector({ selectedModel, onSelectModel }: ModelSel
         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-muted transition-colors text-xs"
       >
         <Zap className="w-3 h-3 text-primary" />
-        <span className="font-medium text-foreground hidden sm:inline">{model?.name || "Nova Smart"}</span>
+        <span className="font-medium text-foreground hidden sm:inline">{model?.name || "Aura Smart"}</span>
         <ChevronDown className={`w-3 h-3 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 

@@ -528,8 +528,8 @@ function handleFollowUp(userMessage: string, history: Message[], isBanglish: boo
 // ── Bangla / Banglish wrappers ──────────────────────────────────────
 function wrapBanglaResponse(intent: Intent): string {
   const responses: Record<string, string> = {
-    greeting: `হ্যালো! 👋 আমি **Nova AI** — আপনার বুদ্ধিমান সহকারী।\n\nআমি সাহায্য করতে পারি:\n- 💻 **প্রোগ্রামিং** — JavaScript, Python, React সহ সব ভাষা\n- 📝 **লেখালেখি** — আর্টিকেল, ইমেইল, কন্টেন্ট\n- 🔬 **গবেষণা** — বিশ্লেষণ এবং তথ্য\n- 💡 **আইডিয়া** — ব্রেইনস্টর্মিং\n\nকী নিয়ে সাহায্য চান? 🚀`,
-    who_are_you: `আমি **Nova AI** — আপনার বুদ্ধিমান সহকারী! 🚀\n\nআমি পারি:\n- প্রোগ্রামিং প্রশ্নের উত্তর দিতে\n- কোড লিখতে ও ডিবাগ করতে\n- বিভিন্ন বিষয় ব্যাখ্যা করতে\n- একাধিক ভাষায় সাহায্য করতে\n\nকী জানতে চান?`,
+    greeting: `হ্যালো! 👋 আমি **Aura AI** — আপনার বুদ্ধিমান সহকারী।\n\nআমি সাহায্য করতে পারি:\n- 💻 **প্রোগ্রামিং** — JavaScript, Python, React সহ সব ভাষা\n- 📝 **লেখালেখি** — আর্টিকেল, ইমেইল, কন্টেন্ট\n- 🔬 **গবেষণা** — বিশ্লেষণ এবং তথ্য\n- 💡 **আইডিয়া** — ব্রেইনস্টর্মিং\n\nকী নিয়ে সাহায্য চান? 🚀`,
+    who_are_you: `আমি **Aura AI** — আপনার বুদ্ধিমান সহকারী! 🚀\n\nআমি পারি:\n- প্রোগ্রামিং প্রশ্নের উত্তর দিতে\n- কোড লিখতে ও ডিবাগ করতে\n- বিভিন্ন বিষয় ব্যাখ্যা করতে\n- একাধিক ভাষায় সাহায্য করতে\n\nকী জানতে চান?`,
     thanks: `আপনাকে স্বাগতম! 😊 সাহায্য করতে পেরে আনন্দিত!\n\nআর কিছু জানতে চাইলে জিজ্ঞাসা করুন! 🚀`,
     farewell: `বিদায়! 👋 আবার দেখা হবে। যেকোনো সময় সাহায্য দরকার হলে আসুন! 😊`,
     unclear: `আমি আপনাকে সাহায্য করতে চাই! 🤔\n\nঅনুগ্রহ করে একটু নির্দিষ্ট করে বলুন:\n- কোন বিষয়ে জানতে চান?\n- কোড দরকার?\n- কোনো ধারণা ব্যাখ্যা করতে হবে?\n\nআমি প্রস্তুত! 💡`,
@@ -539,8 +539,8 @@ function wrapBanglaResponse(intent: Intent): string {
 
 function wrapBanglishResponse(intent: Intent): string {
   const responses: Record<string, string> = {
-    greeting: `Hey! 👋 Ami **Nova AI** — tomar intelligent assistant!\n\nAmi help korte pari:\n- 💻 **Programming** — JavaScript, Python, React\n- 📝 **Writing** — Article, content\n- 🔬 **Research** — Analysis\n- 💡 **Ideas** — Brainstorming\n\nKi niye help chai? Bolo! 🚀`,
-    who_are_you: `Ami **Nova AI**! 🚀 Tomar intelligent coding & knowledge assistant.\n\nAmi code likhte pari, explain korte pari, debug korte pari — just bolo ki dorkar! 😊`,
+    greeting: `Hey! 👋 Ami **Aura AI** — tomar intelligent assistant!\n\nAmi help korte pari:\n- 💻 **Programming** — JavaScript, Python, React\n- 📝 **Writing** — Article, content\n- 🔬 **Research** — Analysis\n- 💡 **Ideas** — Brainstorming\n\nKi niye help chai? Bolo! 🚀`,
+    who_are_you: `Ami **Aura AI**! 🚀 Tomar intelligent coding & knowledge assistant.\n\nAmi code likhte pari, explain korte pari, debug korte pari — just bolo ki dorkar! 😊`,
     thanks: `Welcome! 😊 Help korte pere happy!\n\nAr kisu janthe chaile bolo! 🚀`,
     farewell: `Bye! 👋 Abar dekha hobe. Jodi kono help lage, chole esho! 😊`,
     unclear: `Ami tomar question ta bujhte chai! 🤔\n\nEktu specific kore bolo:\n- Ki topic niye janthe chao?\n- Code example lagbe?\n- Kono concept explain korte hobe?\n\nAmi ready! 💡`,
@@ -595,15 +595,15 @@ export function generateSmartResponse(context: ResponseContext): string {
   if (intent === "greeting") {
     if (isBanglish) return wrapBanglishResponse("greeting");
     if (language === "bn") return wrapBanglaResponse("greeting");
-    if (language === "hi") return `नमस्ते! 👋 मैं **Nova AI** — आपका intelligent assistant!\n\nमैं मदद कर सकता हूं:\n- 💻 **प्रोग्रामिंग** — JavaScript, Python, React\n- 📝 **लेखन** — Article, email\n- 💡 **आइडिया** — Brainstorming\n\nक्या मदद चाहिए? 🚀`;
-    if (language === "ar") return `مرحباً! 👋 أنا **Nova AI** — مساعدك الذكي!\n\nيمكنني المساعدة في:\n- 💻 **البرمجة**\n- 📝 **الكتابة**\n- 💡 **الأفكار**\n\nكيف يمكنني مساعدتك؟ 🚀`;
-    return `Hey there! 👋 I'm **Nova AI**, your intelligent assistant.\n\nI can help you with:\n- 💻 **Programming** — JavaScript, Python, React, C++, Java, and 15+ languages\n- 📝 **Writing** — Articles, emails, summaries\n- 🔬 **Research** — Analysis and insights\n- 💡 **Ideas** — Brainstorming\n\nWhat would you like to work on? 🚀`;
+    if (language === "hi") return `नमस्ते! 👋 मैं **Aura AI** — आपका intelligent assistant!\n\nमैं मदद कर सकता हूं:\n- 💻 **प्रोग्रामिंग** — JavaScript, Python, React\n- 📝 **लेखन** — Article, email\n- 💡 **आइडिया** — Brainstorming\n\nक्या मदद चाहिए? 🚀`;
+    if (language === "ar") return `مرحباً! 👋 أنا **Aura AI** — مساعدك الذكي!\n\nيمكنني المساعدة في:\n- 💻 **البرمجة**\n- 📝 **الكتابة**\n- 💡 **الأفكار**\n\nكيف يمكنني مساعدتك؟ 🚀`;
+    return `Hey there! 👋 I'm **Aura AI**, your intelligent assistant.\n\nI can help you with:\n- 💻 **Programming** — JavaScript, Python, React, C++, Java, and 15+ languages\n- 📝 **Writing** — Articles, emails, summaries\n- 🔬 **Research** — Analysis and insights\n- 💡 **Ideas** — Brainstorming\n\nWhat would you like to work on? 🚀`;
   }
 
   if (intent === "who_are_you") {
     if (isBanglish) return wrapBanglishResponse("who_are_you");
     if (language === "bn") return wrapBanglaResponse("who_are_you");
-    return `I'm **Nova AI** — a next-generation AI workspace assistant! 🚀\n\nI can:\n- **Answer questions** on programming, tech, and general topics\n- **Write & debug code** in 15+ languages\n- **Explain concepts** clearly with examples\n- **Help with writing** — essays, emails, content\n- **Translate** between languages\n- **Understand Banglish** naturally\n\nHow can I help you today?`;
+    return `I'm **Aura AI** — a next-generation AI workspace assistant! 🚀\n\nI can:\n- **Answer questions** on programming, tech, and general topics\n- **Write & debug code** in 15+ languages\n- **Explain concepts** clearly with examples\n- **Help with writing** — essays, emails, content\n- **Translate** between languages\n- **Understand Banglish** naturally\n\nHow can I help you today?`;
   }
 
   if (intent === "thanks") {

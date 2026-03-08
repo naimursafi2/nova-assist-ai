@@ -36,7 +36,7 @@ export default function SubscriptionModal({ isOpen, onClose, currentPlan, onSele
           >
             <div className="flex items-center justify-between p-5 border-b border-border">
               <div>
-                <h3 className="text-lg font-bold text-foreground">✨ Upgrade Nova AI</h3>
+                <h3 className="text-lg font-bold text-foreground">✨ Upgrade Aura AI</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">Choose the plan that fits your needs</p>
               </div>
               <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors">

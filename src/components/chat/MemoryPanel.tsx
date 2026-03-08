@@ -61,7 +61,7 @@ export default function MemoryPanel({ isOpen, onClose }: MemoryPanelProps) {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-foreground">Memory Active</p>
-                  <p className="text-xs text-muted-foreground">Nova remembers your preferences</p>
+                  <p className="text-xs text-muted-foreground">Aura remembers your preferences</p>
                 </div>
                 <button
                   onClick={() => setMemoryEnabled(!memoryEnabled)}
