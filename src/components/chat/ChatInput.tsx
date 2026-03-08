@@ -63,7 +63,7 @@ export default function ChatInput({ onSend, disabled }: ChatInputProps) {
           >
             <Send className="w-4 h-4" />
           </button>
-        </motion.div>
+        </div>
         <p className="text-center text-[10px] text-muted-foreground mt-2">
           Nova AI can make mistakes. Consider checking important information.
         </p>
