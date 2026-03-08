@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { Chat, Message, UploadedFile, dummyChats } from "@/lib/chatData";
+import { detectLanguage, getMultilingualResponse } from "@/lib/languageUtils";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import ChatHeader from "@/components/chat/ChatHeader";
 import ChatWindow from "@/components/chat/ChatWindow";
@@ -9,7 +10,7 @@ import SettingsModal from "@/components/chat/SettingsModal";
 import MemoryPanel from "@/components/chat/MemoryPanel";
 import PromptLibraryModal from "@/components/chat/PromptLibraryModal";
 
-const AI_RESPONSES = [
+const AI_RESPONSES_EN = [
   "That's a great question! Let me break it down for you.\n\nHere are the key points:\n\n1. **Start with the basics** — understand the fundamentals first\n2. **Practice regularly** — consistency is key\n3. **Build projects** — apply what you learn\n\nWould you like me to elaborate on any of these?",
   "I'd be happy to help with that! Here's what I recommend:\n\n```javascript\nconst solution = () => {\n  // Your implementation here\n  return 'success';\n};\n```\n\nThis approach is clean and maintainable. Let me know if you need more details!",
   "Absolutely! Here's a comprehensive overview:\n\n## Overview\nThis topic covers several important aspects that are worth understanding.\n\n## Key Takeaways\n- Focus on **quality** over quantity\n- Use modern tools and frameworks\n- Keep learning and adapting\n\nFeel free to ask follow-up questions!",
@@ -30,6 +31,8 @@ export default function Index() {
   const [showSettings, setShowSettings] = useState(false);
   const [showMemory, setShowMemory] = useState(false);
   const [showPromptLibrary, setShowPromptLibrary] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState("auto");
+  const [detectedLanguage, setDetectedLanguage] = useState<{ name: string; flag: string; isBanglish?: boolean } | null>(null);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
@@ -39,6 +42,19 @@ export default function Index() {
 
   const handleSend = useCallback(
     (content: string) => {
+      // Detect language
+      const detected = selectedLanguage === "auto"
+        ? detectLanguage(content)
+        : { code: selectedLanguage, name: "", flag: "", confidence: 1, isBanglish: false };
+
+      if (selectedLanguage === "auto") {
+        setDetectedLanguage({ name: detected.name, flag: detected.flag, isBanglish: detected.isBanglish });
+        // Clear after 5 seconds
+        setTimeout(() => setDetectedLanguage(null), 5000);
+      }
+
+      const responseLang = selectedLanguage === "auto" ? detected.code : selectedLanguage;
+
       const userMsg: Message = {
         id: Date.now().toString(),
         role: "user",
@@ -47,8 +63,32 @@ export default function Index() {
         files: uploadedFiles.length > 0 ? [...uploadedFiles] : undefined,
       };
 
-      // Clear uploaded files after sending
       setUploadedFiles([]);
+
+      const generateAiResponse = (chatId: string) => {
+        setIsTyping(true);
+        setTimeout(() => {
+          // Try multilingual response, fallback to English
+          const multiResponse = getMultilingualResponse(responseLang, detected.isBanglish);
+          const responseContent = multiResponse || AI_RESPONSES_EN[Math.floor(Math.random() * AI_RESPONSES_EN.length)];
+
+          const aiMsg: Message = {
+            id: (Date.now() + 1).toString(),
+            role: "ai",
+            content: responseContent,
+            timestamp: new Date(),
+            sources: webSearch ? [
+              { title: "Relevant Article", url: "https://example.com", snippet: "Found via web search..." },
+            ] : undefined,
+          };
+          setChats((prev) =>
+            prev.map((c) =>
+              c.id === chatId ? { ...c, messages: [...c.messages, aiMsg] } : c
+            )
+          );
+          setIsTyping(false);
+        }, 1500);
+      };
 
       if (!activeChatId) {
         const newChat: Chat = {
@@ -59,55 +99,23 @@ export default function Index() {
         };
         setChats((prev) => [newChat, ...prev]);
         setActiveChatId(newChat.id);
-
-        setIsTyping(true);
-        setTimeout(() => {
-          const aiMsg: Message = {
-            id: (Date.now() + 1).toString(),
-            role: "ai",
-            content: AI_RESPONSES[Math.floor(Math.random() * AI_RESPONSES.length)],
-            timestamp: new Date(),
-            sources: webSearch ? [
-              { title: "Relevant Article", url: "https://example.com", snippet: "Found via web search..." },
-            ] : undefined,
-          };
-          setChats((prev) =>
-            prev.map((c) =>
-              c.id === newChat.id ? { ...c, messages: [...c.messages, aiMsg] } : c
-            )
-          );
-          setIsTyping(false);
-        }, 1500);
+        generateAiResponse(newChat.id);
       } else {
         setChats((prev) =>
           prev.map((c) =>
             c.id === activeChatId ? { ...c, messages: [...c.messages, userMsg] } : c
           )
         );
-        setIsTyping(true);
-        setTimeout(() => {
-          const aiMsg: Message = {
-            id: (Date.now() + 1).toString(),
-            role: "ai",
-            content: AI_RESPONSES[Math.floor(Math.random() * AI_RESPONSES.length)],
-            timestamp: new Date(),
-            sources: webSearch ? [
-              { title: "Web Result", url: "https://example.com", snippet: "Found via web search..." },
-            ] : undefined,
-          };
-          setChats((prev) =>
-            prev.map((c) =>
-              c.id === activeChatId ? { ...c, messages: [...c.messages, aiMsg] } : c
-            )
-          );
-          setIsTyping(false);
-        }, 1500);
+        generateAiResponse(activeChatId);
       }
     },
-    [activeChatId, webSearch, uploadedFiles]
+    [activeChatId, webSearch, uploadedFiles, selectedLanguage]
   );
 
-  const handleNewChat = () => setActiveChatId(null);
+  const handleNewChat = () => {
+    setActiveChatId(null);
+    setDetectedLanguage(null);
+  };
 
   const handleDeleteChat = (id: string) => {
     setChats((prev) => prev.filter((c) => c.id !== id));
@@ -139,7 +147,6 @@ export default function Index() {
   };
 
   const handlePromptSelect = (prompt: string) => {
-    // Pre-fill — user can still modify. For now just send directly.
     handleSend(prompt);
   };
 
@@ -173,7 +180,6 @@ export default function Index() {
       />
 
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Mode switcher bar */}
         <div className="px-4 py-2 border-b border-border">
           <ModeSwitcher activeMode={activeMode} onSelectMode={setActiveMode} compact />
         </div>
@@ -187,6 +193,9 @@ export default function Index() {
           webSearch={webSearch}
           onToggleWebSearch={() => setWebSearch(!webSearch)}
           activeMode={activeMode}
+          selectedLanguage={selectedLanguage}
+          onSelectLanguage={setSelectedLanguage}
+          detectedLanguage={detectedLanguage}
         />
         <ChatWindow
           messages={activeChat?.messages || []}
@@ -208,7 +217,6 @@ export default function Index() {
         />
       </div>
 
-      {/* Modals */}
       <SettingsModal
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}

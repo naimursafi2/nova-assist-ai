@@ -2,6 +2,7 @@ import { Menu, Share2, Download, Trash2, Globe, MoreVertical } from "lucide-reac
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import ModelSelector from "./ModelSelector";
+import LanguageSelector from "./LanguageSelector";
 
 interface ChatHeaderProps {
   title: string;
@@ -12,6 +13,9 @@ interface ChatHeaderProps {
   webSearch: boolean;
   onToggleWebSearch: () => void;
   activeMode: string;
+  selectedLanguage: string;
+  onSelectLanguage: (code: string) => void;
+  detectedLanguage?: { name: string; flag: string; isBanglish?: boolean } | null;
 }
 
 const modeLabels: Record<string, { icon: string; label: string }> = {
@@ -28,6 +32,8 @@ export default function ChatHeader({
   selectedModel, onSelectModel,
   webSearch, onToggleWebSearch,
   activeMode,
+  selectedLanguage, onSelectLanguage,
+  detectedLanguage,
 }: ChatHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const mode = modeLabels[activeMode] || modeLabels.chat;
@@ -42,13 +48,30 @@ export default function ChatHeader({
         )}
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-sm">{mode.icon}</span>
-          <h1 className="text-sm font-semibold text-foreground truncate max-w-[120px] sm:max-w-[250px]">
+          <h1 className="text-sm font-semibold text-foreground truncate max-w-[100px] sm:max-w-[200px]">
             {title || "New Chat"}
           </h1>
         </div>
+
+        {/* Detected language indicator */}
+        {detectedLanguage && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/10 text-accent text-[10px] font-medium"
+          >
+            <span>{detectedLanguage.flag}</span>
+            <span className="hidden sm:inline">
+              {detectedLanguage.isBanglish ? "Banglish → বাংলা" : detectedLanguage.name}
+            </span>
+          </motion.div>
+        )}
       </div>
 
       <div className="flex items-center gap-1">
+        {/* Language Selector */}
+        <LanguageSelector selectedLanguage={selectedLanguage} onSelectLanguage={onSelectLanguage} />
+
         {/* Web Search Toggle */}
         <button
           onClick={onToggleWebSearch}
@@ -83,22 +106,13 @@ export default function ChatHeader({
                   exit={{ opacity: 0, scale: 0.95 }}
                   className="absolute right-0 top-full mt-1 z-50 w-44 rounded-xl glass-heavy border border-border float-shadow py-1"
                 >
-                  <button
-                    onClick={() => setMenuOpen(false)}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted transition-colors text-foreground"
-                  >
+                  <button onClick={() => setMenuOpen(false)} className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted transition-colors text-foreground">
                     <Share2 className="w-3 h-3" /> Share Chat
                   </button>
-                  <button
-                    onClick={() => setMenuOpen(false)}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted transition-colors text-foreground"
-                  >
+                  <button onClick={() => setMenuOpen(false)} className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted transition-colors text-foreground">
                     <Download className="w-3 h-3" /> Export Chat
                   </button>
-                  <button
-                    onClick={() => setMenuOpen(false)}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted transition-colors text-destructive"
-                  >
+                  <button onClick={() => setMenuOpen(false)} className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted transition-colors text-destructive">
                     <Trash2 className="w-3 h-3" /> Clear Chat
                   </button>
                 </motion.div>
