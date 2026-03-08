@@ -36,10 +36,7 @@ export default function ChatInput({ onSend, disabled }: ChatInputProps) {
   return (
     <div className="p-3 sm:p-4 border-t border-border">
       <div className="max-w-3xl mx-auto">
-        <motion.div
-          className="flex items-end gap-2 rounded-2xl glass border border-border p-2 glow transition-shadow focus-within:ring-1 focus-within:ring-primary/50"
-          whileFocusWithin={{ scale: 1.005 }}
-        >
+        <div className="flex items-end gap-2 rounded-2xl glass border border-border p-2 glow transition-shadow focus-within:ring-1 focus-within:ring-primary/50">
           <button className="p-2 rounded-lg hover:bg-muted transition-colors flex-shrink-0" title="Attach file">
             <Paperclip className="w-4 h-4 text-muted-foreground" />
           </button>
