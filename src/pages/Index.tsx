@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { Chat, Message, UploadedFile, dummyChats } from "@/lib/chatData";
+import { Chat, Message, UploadedFile, dummyChats, aiModes as allModes } from "@/lib/chatData";
 import { detectLanguage, getMultilingualResponse } from "@/lib/languageUtils";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import ChatHeader from "@/components/chat/ChatHeader";
@@ -10,6 +10,7 @@ import SettingsModal from "@/components/chat/SettingsModal";
 import MemoryPanel from "@/components/chat/MemoryPanel";
 import PromptLibraryModal from "@/components/chat/PromptLibraryModal";
 import CommandPalette from "@/components/chat/CommandPalette";
+import SubscriptionModal from "@/components/chat/SubscriptionModal";
 
 const AI_RESPONSES_EN = [
   "That's a great question! Let me break it down for you.\n\nHere are the key points:\n\n1. **Start with the basics** — understand the fundamentals first\n2. **Practice regularly** — consistency is key\n3. **Build projects** — apply what you learn\n\nWould you like me to elaborate on any of these?",
@@ -17,7 +18,18 @@ const AI_RESPONSES_EN = [
   "Absolutely! Here's a comprehensive overview:\n\n## Overview\nThis topic covers several important aspects that are worth understanding.\n\n## Key Takeaways\n- Focus on **quality** over quantity\n- Use modern tools and frameworks\n- Keep learning and adapting\n\nFeel free to ask follow-up questions!",
 ];
 
-const IMAGE_ANALYSIS_RESPONSE = "I can see the image you've uploaded! Here's my analysis:\n\n## Visual Description\nThe image contains interesting visual elements that I can describe in detail.\n\n## Key Observations\n- **Composition**: The layout and arrangement are well-structured\n- **Colors**: The color palette creates a cohesive visual experience\n- **Details**: There are several notable details worth highlighting\n\nWould you like me to focus on any specific aspect of the image?";
+const MODE_RESPONSES: Record<string, string> = {
+  slides: "📊 **Slide Deck Generated!**\n\nHere's your presentation outline:\n\n## Slide 1: Title\n**Your Topic** — A compelling subtitle\n\n## Slide 2: Overview\n- Key point 1\n- Key point 2\n- Key point 3\n\n## Slide 3: Deep Dive\nDetailed analysis with data visualizations\n\n## Slide 4: Conclusion\nKey takeaways and next steps\n\n---\n*💡 Tip: You can ask me to expand any slide or change the style.*",
+  ideas: "💡 **Brainstorm Results**\n\nHere are some innovative ideas:\n\n### 🚀 Concept 1: AI-Powered Solution\nLeverage machine learning to automate the process\n\n### 🎯 Concept 2: Community-Driven\nBuild a platform where users contribute and benefit\n\n### 💎 Concept 3: Premium Experience\nCreate a high-value offering with exclusive features\n\n### 📈 Concept 4: Data-First Approach\nUse analytics to drive decisions\n\n*Which idea interests you most?*",
+  content: "📝 **Content Generated!**\n\n# Your Article Title\n\n## Introduction\nCapture attention with a compelling hook that draws readers in...\n\n## Main Points\n\n### 1. The Current Landscape\nAnalysis of where things stand today.\n\n### 2. Key Trends\nWhat's changing and why it matters.\n\n### 3. Actionable Steps\nConcrete things readers can do right now.\n\n## Conclusion\nWrap up with a strong call to action.\n\n---\n*Want me to expand any section or adjust the tone?*",
+  document: "📄 **Document Analysis Complete**\n\n## Key Findings\n- **Main Topic**: The document discusses...\n- **Word Count**: ~2,500 words\n- **Reading Level**: Professional\n\n## Summary\nThe document covers three main areas with detailed analysis and recommendations.\n\n## Key Insights\n1. Important finding #1\n2. Critical data point #2\n3. Action item #3\n\n*Ask me specific questions about the document!*",
+  research: "🔬 **Research Report**\n\n## Topic Analysis\n\n### Background\nComprehensive overview of the current state of research.\n\n### Key Sources\n📚 Academic papers, industry reports, and expert analyses\n\n### Findings\n1. **Primary finding** — Supported by multiple sources\n2. **Secondary finding** — Emerging trend\n3. **Tertiary finding** — Requires further study\n\n### Conclusion\nThe evidence suggests...\n\n*Sources: 12 academic papers, 5 industry reports*",
+};
+
+const IMAGE_ANALYSIS_RESPONSE = "🖼️ **Image Analysis Complete**\n\n## Visual Description\nThe image contains interesting visual elements.\n\n## Key Observations\n- **Composition**: Well-structured layout\n- **Colors**: Cohesive palette\n- **Details**: Notable details worth highlighting\n\nWould you like me to focus on any specific aspect?";
+
+const planLevel: Record<string, number> = { guest: 0, basic: 1, advanced: 2, pro: 3 };
+const planMessageLimits: Record<string, number> = { guest: 5, basic: 50, advanced: 200, pro: 9999 };
 
 export default function Index() {
   const [chats, setChats] = useState<Chat[]>(dummyChats);
@@ -36,8 +48,12 @@ export default function Index() {
   const [showMemory, setShowMemory] = useState(false);
   const [showPromptLibrary, setShowPromptLibrary] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [showSubscription, setShowSubscription] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState("auto");
   const [detectedLanguage, setDetectedLanguage] = useState<{ name: string; flag: string; isBanglish?: boolean } | null>(null);
+  const [currentPlan, setCurrentPlan] = useState<string>("advanced");
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [messageCount, setMessageCount] = useState(0);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
@@ -47,6 +63,13 @@ export default function Index() {
 
   const handleSend = useCallback(
     (content: string) => {
+      // Check message limit
+      const limit = planMessageLimits[currentPlan] || 5;
+      if (messageCount >= limit) {
+        setShowSubscription(true);
+        return;
+      }
+
       const detected = selectedLanguage === "auto"
         ? detectLanguage(content)
         : { code: selectedLanguage, name: "", flag: "", confidence: 1, isBanglish: false };
@@ -70,6 +93,7 @@ export default function Index() {
 
       setUploadedFiles([]);
       setUploadedImages([]);
+      setMessageCount((prev) => prev + 1);
 
       const generateAiResponse = (chatId: string) => {
         setIsTyping(true);
@@ -77,6 +101,8 @@ export default function Index() {
           let responseContent: string;
           if (hasImages) {
             responseContent = IMAGE_ANALYSIS_RESPONSE;
+          } else if (MODE_RESPONSES[activeMode]) {
+            responseContent = MODE_RESPONSES[activeMode];
           } else {
             const multiResponse = getMultilingualResponse(responseLang, detected.isBanglish);
             responseContent = multiResponse || AI_RESPONSES_EN[Math.floor(Math.random() * AI_RESPONSES_EN.length)];
@@ -89,6 +115,7 @@ export default function Index() {
             timestamp: new Date(),
             sources: webSearch ? [
               { title: "Relevant Article", url: "https://example.com", snippet: "Found via web search..." },
+              { title: "Research Paper", url: "https://example.com/paper", snippet: "Academic source with citations..." },
             ] : undefined,
           };
           setChats((prev) =>
@@ -119,7 +146,7 @@ export default function Index() {
         generateAiResponse(activeChatId);
       }
     },
-    [activeChatId, webSearch, uploadedFiles, uploadedImages, selectedLanguage]
+    [activeChatId, webSearch, uploadedFiles, uploadedImages, selectedLanguage, activeMode, currentPlan, messageCount]
   );
 
   const handleNewChat = () => {
@@ -159,6 +186,19 @@ export default function Index() {
   const handleRemoveImage = (index: number) => {
     setUploadedImages((prev) => prev.filter((_, i) => i !== index));
   };
+
+  const handleSelectMode = useCallback((mode: string) => {
+    const modeData = allModes.find((m) => m.id === mode);
+    if (modeData) {
+      const requiredLevel = planLevel[modeData.requiredPlan] || 0;
+      const userLevel = planLevel[currentPlan] || 0;
+      if (requiredLevel > userLevel) {
+        setShowSubscription(true);
+        return;
+      }
+    }
+    setActiveMode(mode);
+  }, [currentPlan]);
 
   const handleCommandAction = useCallback((action: string, payload?: string) => {
     switch (action) {
@@ -260,11 +300,15 @@ export default function Index() {
         onOpenSettings={() => setShowSettings(true)}
         onOpenMemory={() => setShowMemory(true)}
         onOpenPromptLibrary={() => setShowPromptLibrary(true)}
+        currentPlan={currentPlan}
+        onUpgrade={() => setShowSubscription(true)}
+        isLoggedIn={isLoggedIn}
+        onLogin={() => setIsLoggedIn(true)}
       />
 
       <div className="flex-1 flex flex-col min-w-0">
         <div className="px-4 py-2 border-b border-border">
-          <ModeSwitcher activeMode={activeMode} onSelectMode={setActiveMode} compact />
+          <ModeSwitcher activeMode={activeMode} onSelectMode={setActiveMode} compact currentPlan={currentPlan} onUpgrade={() => setShowSubscription(true)} />
         </div>
 
         <ChatHeader
@@ -279,6 +323,8 @@ export default function Index() {
           selectedLanguage={selectedLanguage}
           onSelectLanguage={setSelectedLanguage}
           detectedLanguage={detectedLanguage}
+          currentPlan={currentPlan}
+          messageCount={messageCount}
         />
         <ChatWindow
           messages={activeChat?.messages || []}
@@ -288,6 +334,8 @@ export default function Index() {
           onSelectMode={setActiveMode}
           onOpenCommandPalette={() => setShowCommandPalette(true)}
           recentChatsCount={chats.length}
+          currentPlan={currentPlan}
+          onUpgrade={() => setShowSubscription(true)}
         />
         <ChatInput
           onSend={handleSend}
@@ -329,6 +377,12 @@ export default function Index() {
         isOpen={showCommandPalette}
         onClose={() => setShowCommandPalette(false)}
         onAction={handleCommandAction}
+      />
+      <SubscriptionModal
+        isOpen={showSubscription}
+        onClose={() => setShowSubscription(false)}
+        currentPlan={currentPlan}
+        onSelectPlan={(plan) => { setCurrentPlan(plan); setShowSubscription(false); }}
       />
     </div>
   );
