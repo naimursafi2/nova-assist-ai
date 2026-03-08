@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { Chat, Message, UploadedFile, dummyChats, aiModes as allModes } from "@/lib/chatData";
 import { detectLanguage } from "@/lib/languageUtils";
 import { streamChat, ChatMessage } from "@/lib/streamChat";
+import { useAuth } from "@/contexts/AuthContext";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import ChatHeader from "@/components/chat/ChatHeader";
 import ChatWindow from "@/components/chat/ChatWindow";
@@ -19,6 +20,8 @@ const planLevel: Record<string, number> = { guest: 0, basic: 1, advanced: 2, pro
 const planMessageLimits: Record<string, number> = { guest: 5, basic: 50, advanced: 200, pro: 9999 };
 
 export default function Index() {
+  const { user, profile, loginWithGoogle, logout, incrementUsage, isTrialActive } = useAuth();
+
   const [chats, setChats] = useState<Chat[]>(dummyChats);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -38,11 +41,12 @@ export default function Index() {
   const [showSubscription, setShowSubscription] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState("auto");
   const [detectedLanguage, setDetectedLanguage] = useState<{ name: string; flag: string; isBanglish?: boolean } | null>(null);
-  const [currentPlan, setCurrentPlan] = useState<string>("advanced");
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
-  const [messageCount, setMessageCount] = useState(0);
   const streamingRef = useRef(false);
   const [showProfile, setShowProfile] = useState(false);
+
+  const currentPlan = profile?.plan || "guest";
+  const isLoggedIn = !!user;
+  const messageCount = profile?.messageCount || 0;
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
@@ -88,7 +92,7 @@ export default function Index() {
 
       setUploadedFiles([]);
       setUploadedImages([]);
-      setMessageCount((prev) => prev + 1);
+      incrementUsage();
 
       let targetChatId = activeChatId;
 
@@ -337,7 +341,7 @@ export default function Index() {
         currentPlan={currentPlan}
         onUpgrade={() => setShowSubscription(true)}
         isLoggedIn={isLoggedIn}
-        onLogin={() => setIsLoggedIn(true)}
+        onLogin={() => loginWithGoogle()}
       />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -416,15 +420,12 @@ export default function Index() {
         isOpen={showSubscription}
         onClose={() => setShowSubscription(false)}
         currentPlan={currentPlan}
-        onSelectPlan={(plan) => { setCurrentPlan(plan); setShowSubscription(false); }}
+        onSelectPlan={(plan) => { setShowSubscription(false); }}
       />
       <ProfilePanel
         isOpen={showProfile}
         onClose={() => setShowProfile(false)}
-        currentPlan={currentPlan}
-        messageCount={messageCount}
         onUpgrade={() => { setShowProfile(false); setShowSubscription(true); }}
-        onLogout={() => { setIsLoggedIn(false); setShowProfile(false); }}
       />
     </div>
   );
