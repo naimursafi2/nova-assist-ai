@@ -1002,15 +1002,15 @@ export function generateSmartResponse(context: ResponseContext): string {
     return `📄 **Document Received**\n\nI've received your file(s). Here's what I can help with:\n\n1. **Summarize** — Get key points\n2. **Analyze** — Deep dive into content\n3. **Extract** — Pull specific information\n4. **Q&A** — Ask questions about the document\n\nWhat would you like me to do with the document?`;
   }
 
-  // Mode-specific responses (only for specialized modes)
-  if (activeMode === "slides" && !detectTopic(userMessage, isBanglish)) {
-    return MODE_RESPONSES.slides || GENERAL_FALLBACK;
-  }
-  if (activeMode === "ideas" && !detectTopic(userMessage, isBanglish)) {
-    return MODE_RESPONSES.ideas || GENERAL_FALLBACK;
-  }
-  if (activeMode === "content" && !detectTopic(userMessage, isBanglish)) {
-    return MODE_RESPONSES.content || GENERAL_FALLBACK;
+  // Mode-specific responses (only for specialized modes with no specific topic detected)
+  const modeSpecificResponses: Record<string, string> = {
+    slides: `📊 **Slide Deck Generated!**\n\nHere's your presentation outline:\n\n## Slide 1: Title\n**Your Topic** — A compelling subtitle\n\n## Slide 2: Overview\n- Key point 1\n- Key point 2\n- Key point 3\n\n## Slide 3: Deep Dive\nDetailed analysis with data visualizations\n\n## Slide 4: Conclusion\nKey takeaways and next steps\n\n---\n*💡 Tip: You can ask me to expand any slide or change the style.*`,
+    ideas: `💡 **Brainstorm Results**\n\nHere are some innovative ideas:\n\n### 🚀 Concept 1: AI-Powered Solution\nLeverage machine learning to automate the process\n\n### 🎯 Concept 2: Community-Driven\nBuild a platform where users contribute and benefit\n\n### 💎 Concept 3: Premium Experience\nCreate a high-value offering with exclusive features\n\n### 📈 Concept 4: Data-First Approach\nUse analytics to drive decisions\n\n*Which idea interests you most?*`,
+    content: `📝 **Content Generated!**\n\n# Your Article Title\n\n## Introduction\nCapture attention with a compelling hook...\n\n## Main Points\n\n### 1. The Current Landscape\nAnalysis of where things stand today.\n\n### 2. Key Trends\nWhat's changing and why it matters.\n\n### 3. Actionable Steps\nConcrete things readers can do right now.\n\n## Conclusion\nWrap up with a strong call to action.\n\n---\n*Want me to expand any section or adjust the tone?*`,
+  };
+
+  if (modeSpecificResponses[activeMode] && !detectTopic(userMessage, isBanglish)) {
+    return modeSpecificResponses[activeMode];
   }
 
   // Very short/unclear messages
