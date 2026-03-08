@@ -1,34 +1,111 @@
-import { Menu, Share2, MoreVertical } from "lucide-react";
+import { Menu, Share2, Download, Trash2, Globe, MoreVertical } from "lucide-react";
+import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import ModelSelector from "./ModelSelector";
 
 interface ChatHeaderProps {
   title: string;
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
+  selectedModel: string;
+  onSelectModel: (id: string) => void;
+  webSearch: boolean;
+  onToggleWebSearch: () => void;
+  activeMode: string;
 }
 
-export default function ChatHeader({ title, sidebarOpen, onToggleSidebar }: ChatHeaderProps) {
+const modeLabels: Record<string, { icon: string; label: string }> = {
+  chat: { icon: "💬", label: "Chat" },
+  writing: { icon: "✍️", label: "Writing" },
+  study: { icon: "📚", label: "Study" },
+  research: { icon: "🔬", label: "Research" },
+  code: { icon: "💻", label: "Code" },
+  business: { icon: "💼", label: "Business" },
+};
+
+export default function ChatHeader({
+  title, sidebarOpen, onToggleSidebar,
+  selectedModel, onSelectModel,
+  webSearch, onToggleWebSearch,
+  activeMode,
+}: ChatHeaderProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const mode = modeLabels[activeMode] || modeLabels.chat;
+
   return (
     <header className="h-14 flex items-center justify-between px-4 border-b border-border glass">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 min-w-0">
         {!sidebarOpen && (
-          <button
-            onClick={onToggleSidebar}
-            className="p-2 rounded-lg hover:bg-muted transition-colors"
-          >
+          <button onClick={onToggleSidebar} className="p-2 rounded-lg hover:bg-muted transition-colors flex-shrink-0">
             <Menu className="w-4 h-4 text-muted-foreground" />
           </button>
         )}
-        <h1 className="text-sm font-semibold text-foreground truncate max-w-[200px] sm:max-w-none">
-          {title || "New Chat"}
-        </h1>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-sm">{mode.icon}</span>
+          <h1 className="text-sm font-semibold text-foreground truncate max-w-[120px] sm:max-w-[250px]">
+            {title || "New Chat"}
+          </h1>
+        </div>
       </div>
+
       <div className="flex items-center gap-1">
-        <button className="p-2 rounded-lg hover:bg-muted transition-colors">
-          <Share2 className="w-4 h-4 text-muted-foreground" />
+        {/* Web Search Toggle */}
+        <button
+          onClick={onToggleWebSearch}
+          className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            webSearch
+              ? "bg-primary/10 text-primary"
+              : "text-muted-foreground hover:bg-muted"
+          }`}
+          title="Toggle web search"
+        >
+          <Globe className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">{webSearch ? "Web" : "Off"}</span>
         </button>
-        <button className="p-2 rounded-lg hover:bg-muted transition-colors">
-          <MoreVertical className="w-4 h-4 text-muted-foreground" />
-        </button>
+
+        <ModelSelector selectedModel={selectedModel} onSelectModel={onSelectModel} />
+
+        {/* More menu */}
+        <div className="relative">
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="p-2 rounded-lg hover:bg-muted transition-colors"
+          >
+            <MoreVertical className="w-4 h-4 text-muted-foreground" />
+          </button>
+          <AnimatePresence>
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="absolute right-0 top-full mt-1 z-50 w-44 rounded-xl glass-heavy border border-border float-shadow py-1"
+                >
+                  <button
+                    onClick={() => setMenuOpen(false)}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted transition-colors text-foreground"
+                  >
+                    <Share2 className="w-3 h-3" /> Share Chat
+                  </button>
+                  <button
+                    onClick={() => setMenuOpen(false)}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted transition-colors text-foreground"
+                  >
+                    <Download className="w-3 h-3" /> Export Chat
+                  </button>
+                  <button
+                    onClick={() => setMenuOpen(false)}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted transition-colors text-destructive"
+                  >
+                    <Trash2 className="w-3 h-3" /> Clear Chat
+                  </button>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </header>
   );

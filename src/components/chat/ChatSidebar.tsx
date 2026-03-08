@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Search, Pin, Trash2, PenLine, Settings, User,
   MessageSquare, ChevronLeft, Sun, Moon, MoreHorizontal,
+  Brain, BookOpen, FolderOpen, Star,
 } from "lucide-react";
-import { Chat } from "@/lib/chatData";
+import { Chat, chatFolders } from "@/lib/chatData";
 
 interface ChatSidebarProps {
   chats: Chat[];
@@ -14,24 +15,32 @@ interface ChatSidebarProps {
   onDeleteChat: (id: string) => void;
   onRenameChat: (id: string, title: string) => void;
   onPinChat: (id: string) => void;
+  onStarChat: (id: string) => void;
   isOpen: boolean;
   onToggle: () => void;
   darkMode: boolean;
   onToggleTheme: () => void;
+  onOpenSettings: () => void;
+  onOpenMemory: () => void;
+  onOpenPromptLibrary: () => void;
 }
 
 export default function ChatSidebar({
   chats, activeChatId, onSelectChat, onNewChat, onDeleteChat,
-  onRenameChat, onPinChat, isOpen, onToggle, darkMode, onToggleTheme,
+  onRenameChat, onPinChat, onStarChat, isOpen, onToggle, darkMode, onToggleTheme,
+  onOpenSettings, onOpenMemory, onOpenPromptLibrary,
 }: ChatSidebarProps) {
   const [search, setSearch] = useState("");
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [activeFolder, setActiveFolder] = useState("All");
 
-  const filtered = chats.filter((c) =>
-    c.title.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = chats.filter((c) => {
+    const matchSearch = c.title.toLowerCase().includes(search.toLowerCase());
+    const matchFolder = activeFolder === "All" || c.folder === activeFolder;
+    return matchSearch && matchFolder;
+  });
   const pinned = filtered.filter((c) => c.pinned);
   const recent = filtered.filter((c) => !c.pinned);
 
@@ -58,7 +67,12 @@ export default function ChatSidebar({
         >
           {/* Header */}
           <div className="p-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold gradient-text">Nova AI</h2>
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg gradient-btn flex items-center justify-center">
+                <span className="text-xs font-bold text-primary-foreground">N</span>
+              </div>
+              <h2 className="text-sm font-bold font-display gradient-text">Nova AI</h2>
+            </div>
             <button onClick={onToggle} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
               <ChevronLeft className="w-4 h-4 text-muted-foreground" />
             </button>
@@ -88,6 +102,39 @@ export default function ChatSidebar({
             </div>
           </div>
 
+          {/* Folder Tabs */}
+          <div className="px-3 pb-2 flex gap-1 overflow-x-auto scrollbar-thin">
+            {chatFolders.map((f) => (
+              <button
+                key={f}
+                onClick={() => setActiveFolder(f)}
+                className={`px-2 py-1 rounded-md text-[10px] font-medium whitespace-nowrap transition-all ${
+                  activeFolder === f
+                    ? "gradient-btn text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+
+          {/* Quick Actions */}
+          <div className="px-3 pb-2 flex gap-1">
+            <button
+              onClick={onOpenPromptLibrary}
+              className="flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-muted text-xs text-muted-foreground transition-colors"
+            >
+              <BookOpen className="w-3 h-3" /> Prompts
+            </button>
+            <button
+              onClick={onOpenMemory}
+              className="flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-muted text-xs text-muted-foreground transition-colors"
+            >
+              <Brain className="w-3 h-3" /> Memory
+            </button>
+          </div>
+
           {/* Chat List */}
           <div className="flex-1 overflow-y-auto scrollbar-thin px-2 space-y-1">
             {pinned.length > 0 && (
@@ -104,6 +151,7 @@ export default function ChatSidebar({
                     onSelect={() => onSelectChat(chat.id)}
                     onMenuToggle={() => setMenuOpen(menuOpen === chat.id ? null : chat.id)}
                     onPin={() => { onPinChat(chat.id); setMenuOpen(null); }}
+                    onStar={() => { onStarChat(chat.id); setMenuOpen(null); }}
                     onDelete={() => { onDeleteChat(chat.id); setMenuOpen(null); }}
                     onStartRename={() => startRename(chat)}
                     onRenameChange={setRenameValue}
@@ -126,6 +174,7 @@ export default function ChatSidebar({
                     onSelect={() => onSelectChat(chat.id)}
                     onMenuToggle={() => setMenuOpen(menuOpen === chat.id ? null : chat.id)}
                     onPin={() => { onPinChat(chat.id); setMenuOpen(null); }}
+                    onStar={() => { onStarChat(chat.id); setMenuOpen(null); }}
                     onDelete={() => { onDeleteChat(chat.id); setMenuOpen(null); }}
                     onStartRename={() => startRename(chat)}
                     onRenameChange={setRenameValue}
@@ -137,7 +186,7 @@ export default function ChatSidebar({
           </div>
 
           {/* Footer */}
-          <div className="p-3 border-t border-border space-y-2">
+          <div className="p-3 border-t border-border space-y-1">
             <button
               onClick={onToggleTheme}
               className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted text-sm text-muted-foreground transition-colors"
@@ -145,7 +194,10 @@ export default function ChatSidebar({
               {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               {darkMode ? "Light Mode" : "Dark Mode"}
             </button>
-            <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted text-sm text-muted-foreground transition-colors">
+            <button
+              onClick={onOpenSettings}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted text-sm text-muted-foreground transition-colors"
+            >
               <Settings className="w-4 h-4" />
               Settings
             </button>
@@ -155,7 +207,7 @@ export default function ChatSidebar({
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-foreground truncate">John Doe</p>
-                <p className="text-[10px] text-muted-foreground">Free Plan</p>
+                <p className="text-[10px] text-muted-foreground">Pro Plan</p>
               </div>
             </div>
           </div>
@@ -167,7 +219,7 @@ export default function ChatSidebar({
 
 function ChatItem({
   chat, active, menuOpen, renaming, renameValue,
-  onSelect, onMenuToggle, onPin, onDelete, onStartRename,
+  onSelect, onMenuToggle, onPin, onStar, onDelete, onStartRename,
   onRenameChange, onRenameSubmit,
 }: {
   chat: Chat;
@@ -178,6 +230,7 @@ function ChatItem({
   onSelect: () => void;
   onMenuToggle: () => void;
   onPin: () => void;
+  onStar: () => void;
   onDelete: () => void;
   onStartRename: () => void;
   onRenameChange: (v: string) => void;
@@ -207,6 +260,7 @@ function ChatItem({
         ) : (
           <span className="flex-1 truncate text-xs">{chat.title}</span>
         )}
+        {chat.starred && <Star className="w-3 h-3 text-warning flex-shrink-0 fill-current" />}
         {chat.pinned && <Pin className="w-3 h-3 text-primary flex-shrink-0" />}
         <button
           onClick={(e) => { e.stopPropagation(); onMenuToggle(); }}
@@ -221,13 +275,16 @@ function ChatItem({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="absolute right-1 top-full z-50 mt-1 w-36 rounded-lg glass border border-border shadow-lg py-1"
+            className="absolute right-1 top-full z-50 mt-1 w-36 rounded-lg glass-heavy border border-border float-shadow py-1"
           >
             <button onClick={onStartRename} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted transition-colors text-foreground">
               <PenLine className="w-3 h-3" /> Rename
             </button>
             <button onClick={onPin} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted transition-colors text-foreground">
               <Pin className="w-3 h-3" /> {chat.pinned ? "Unpin" : "Pin"}
+            </button>
+            <button onClick={onStar} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted transition-colors text-foreground">
+              <Star className="w-3 h-3" /> {chat.starred ? "Unstar" : "Star"}
             </button>
             <button onClick={onDelete} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted transition-colors text-destructive">
               <Trash2 className="w-3 h-3" /> Delete
