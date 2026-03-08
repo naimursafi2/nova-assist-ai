@@ -1,4 +1,4 @@
-import { Menu, Share2, Download, Trash2, Globe, MoreVertical } from "lucide-react";
+import { Menu, Share2, Download, Trash2, Globe, MoreVertical, Crown } from "lucide-react";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import ModelSelector from "./ModelSelector";
@@ -16,6 +16,8 @@ interface ChatHeaderProps {
   selectedLanguage: string;
   onSelectLanguage: (code: string) => void;
   detectedLanguage?: { name: string; flag: string; isBanglish?: boolean } | null;
+  currentPlan?: string;
+  messageCount?: number;
 }
 
 const modeLabels: Record<string, { icon: string; label: string }> = {
@@ -25,7 +27,13 @@ const modeLabels: Record<string, { icon: string; label: string }> = {
   research: { icon: "🔬", label: "Research" },
   code: { icon: "💻", label: "Code" },
   business: { icon: "💼", label: "Business" },
+  document: { icon: "📄", label: "Document" },
+  slides: { icon: "📊", label: "Slides" },
+  ideas: { icon: "💡", label: "Ideas" },
+  content: { icon: "📝", label: "Content" },
 };
+
+const planMessageLimits: Record<string, number> = { guest: 5, basic: 50, advanced: 200, pro: 9999 };
 
 export default function ChatHeader({
   title, sidebarOpen, onToggleSidebar,
@@ -34,9 +42,12 @@ export default function ChatHeader({
   activeMode,
   selectedLanguage, onSelectLanguage,
   detectedLanguage,
+  currentPlan = "advanced",
+  messageCount = 0,
 }: ChatHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const mode = modeLabels[activeMode] || modeLabels.chat;
+  const limit = planMessageLimits[currentPlan] || 5;
 
   return (
     <header className="h-14 flex items-center justify-between px-4 border-b border-border glass">
@@ -66,19 +77,22 @@ export default function ChatHeader({
             </span>
           </motion.div>
         )}
+
+        {/* Message counter */}
+        {currentPlan !== "pro" && (
+          <div className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-[10px] font-medium text-muted-foreground">
+            <span>{messageCount}/{limit === 9999 ? "∞" : limit}</span>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-1">
-        {/* Language Selector */}
         <LanguageSelector selectedLanguage={selectedLanguage} onSelectLanguage={onSelectLanguage} />
 
-        {/* Web Search Toggle */}
         <button
           onClick={onToggleWebSearch}
           className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${
-            webSearch
-              ? "bg-primary/10 text-primary"
-              : "text-muted-foreground hover:bg-muted"
+            webSearch ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"
           }`}
           title="Toggle web search"
         >
@@ -88,7 +102,6 @@ export default function ChatHeader({
 
         <ModelSelector selectedModel={selectedModel} onSelectModel={onSelectModel} />
 
-        {/* More menu */}
         <div className="relative">
           <button
             onClick={() => setMenuOpen(!menuOpen)}

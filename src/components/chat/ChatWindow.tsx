@@ -12,9 +12,14 @@ interface ChatWindowProps {
   onSelectMode: (mode: string) => void;
   onOpenCommandPalette: () => void;
   recentChatsCount: number;
+  currentPlan: string;
+  onUpgrade: () => void;
 }
 
-export default function ChatWindow({ messages, isTyping, onPromptClick, activeMode, onSelectMode, onOpenCommandPalette, recentChatsCount }: ChatWindowProps) {
+export default function ChatWindow({
+  messages, isTyping, onPromptClick, activeMode, onSelectMode,
+  onOpenCommandPalette, recentChatsCount, currentPlan, onUpgrade,
+}: ChatWindowProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -29,6 +34,8 @@ export default function ChatWindow({ messages, isTyping, onPromptClick, activeMo
         onSelectMode={onSelectMode}
         onOpenCommandPalette={onOpenCommandPalette}
         recentChatsCount={recentChatsCount}
+        currentPlan={currentPlan}
+        onUpgrade={onUpgrade}
       />
     );
   }

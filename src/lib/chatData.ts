@@ -37,6 +37,7 @@ export interface AIMode {
   icon: string;
   description: string;
   color: string;
+  requiredPlan: "guest" | "basic" | "advanced" | "pro";
   prompts: { icon: string; title: string; description: string }[];
 }
 
@@ -54,6 +55,7 @@ export interface QuickTool {
   description: string;
   icon: string;
   action: string;
+  requiredPlan: "guest" | "basic" | "advanced" | "pro";
 }
 
 export interface AIModel {
@@ -70,6 +72,119 @@ export interface MemoryItem {
   createdAt: Date;
 }
 
+export interface SubscriptionPlan {
+  id: "guest" | "basic" | "advanced" | "pro";
+  name: string;
+  price: string;
+  period: string;
+  description: string;
+  features: string[];
+  badge?: string;
+  popular?: boolean;
+  color: string;
+}
+
+export interface AIToolCard {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  category: string;
+  requiredPlan: "guest" | "basic" | "advanced" | "pro";
+  action: string;
+}
+
+export const subscriptionPlans: SubscriptionPlan[] = [
+  {
+    id: "guest",
+    name: "Guest",
+    price: "Free",
+    period: "",
+    description: "Try Nova AI without signing up",
+    color: "from-muted to-secondary",
+    features: [
+      "5 messages per day",
+      "Basic AI chat",
+      "Limited prompts",
+      "English only responses",
+    ],
+  },
+  {
+    id: "basic",
+    name: "Basic",
+    price: "$9",
+    period: "/month",
+    description: "Essential AI tools for everyday use",
+    color: "from-primary/80 to-primary",
+    features: [
+      "50 messages per day",
+      "Chat history",
+      "Prompt library",
+      "Basic AI tools",
+      "Document summary",
+      "Multilingual support",
+      "3 AI modes",
+    ],
+  },
+  {
+    id: "advanced",
+    name: "Advanced",
+    price: "$19",
+    period: "/month",
+    description: "Power tools for professionals",
+    color: "from-accent/80 to-accent",
+    popular: true,
+    badge: "Most Popular",
+    features: [
+      "200 messages per day",
+      "All Basic features",
+      "6 AI modes",
+      "File upload (PDF, DOCX)",
+      "Document analysis",
+      "Web search AI",
+      "Voice input",
+      "Research AI",
+      "Coding assistant",
+    ],
+  },
+  {
+    id: "pro",
+    name: "Pro",
+    price: "$39",
+    period: "/month",
+    description: "Unlimited access to all AI capabilities",
+    color: "from-warning to-destructive",
+    badge: "Best Value",
+    features: [
+      "Unlimited messages",
+      "All Advanced features",
+      "Slide generator",
+      "Content generator",
+      "Image understanding",
+      "AI presentation maker",
+      "Priority responses",
+      "Advanced workspace",
+      "Idea brainstormer",
+      "Export & share",
+    ],
+  },
+];
+
+export const aiTools: AIToolCard[] = [
+  { id: "at1", title: "Chat Assistant", description: "Natural conversation with AI", icon: "💬", category: "Core", requiredPlan: "guest", action: "chat" },
+  { id: "at2", title: "Writing Assistant", description: "Write, edit, and improve content", icon: "✍️", category: "Core", requiredPlan: "basic", action: "writing" },
+  { id: "at3", title: "Research Assistant", description: "Deep research with citations", icon: "🔬", category: "Core", requiredPlan: "advanced", action: "research" },
+  { id: "at4", title: "Coding Assistant", description: "Write, debug, and explain code", icon: "💻", category: "Core", requiredPlan: "advanced", action: "code" },
+  { id: "at5", title: "Document Analyzer", description: "Upload and analyze documents", icon: "📄", category: "Productivity", requiredPlan: "advanced", action: "document" },
+  { id: "at6", title: "Slide Generator", description: "Create AI presentations", icon: "📊", category: "Creative", requiredPlan: "pro", action: "slides" },
+  { id: "at7", title: "Content Generator", description: "Blog posts, emails, social media", icon: "📝", category: "Creative", requiredPlan: "pro", action: "content" },
+  { id: "at8", title: "Brainstorm AI", description: "Generate ideas and strategies", icon: "💡", category: "Creative", requiredPlan: "pro", action: "ideas" },
+  { id: "at9", title: "Image Understanding", description: "Analyze and describe images", icon: "🖼️", category: "Analysis", requiredPlan: "pro", action: "image" },
+  { id: "at10", title: "Translation AI", description: "Translate any language pair", icon: "🌐", category: "Utility", requiredPlan: "basic", action: "translate" },
+  { id: "at11", title: "Study Assistant", description: "Learn and review smarter", icon: "📚", category: "Education", requiredPlan: "basic", action: "study" },
+  { id: "at12", title: "Business Assistant", description: "Strategy, planning, operations", icon: "💼", category: "Productivity", requiredPlan: "advanced", action: "business" },
+];
+
 export const aiModes: AIMode[] = [
   {
     id: "chat",
@@ -77,6 +192,7 @@ export const aiModes: AIMode[] = [
     icon: "💬",
     description: "General-purpose AI assistant",
     color: "from-primary to-accent",
+    requiredPlan: "guest",
     prompts: [
       { icon: "💡", title: "Explain a concept", description: "Break down complex topics simply" },
       { icon: "🤔", title: "Answer a question", description: "Get accurate, detailed answers" },
@@ -90,6 +206,7 @@ export const aiModes: AIMode[] = [
     icon: "✍️",
     description: "Write, edit, and improve content",
     color: "from-emerald-500 to-teal-500",
+    requiredPlan: "basic",
     prompts: [
       { icon: "📝", title: "Draft an email", description: "Professional and polished emails" },
       { icon: "📄", title: "Write an essay", description: "Well-structured academic writing" },
@@ -103,6 +220,7 @@ export const aiModes: AIMode[] = [
     icon: "📚",
     description: "Learn, review, and study smarter",
     color: "from-amber-500 to-orange-500",
+    requiredPlan: "basic",
     prompts: [
       { icon: "🧠", title: "Explain like I'm 5", description: "Simple explanations for anything" },
       { icon: "📖", title: "Create flashcards", description: "Key concepts as flashcards" },
@@ -114,8 +232,9 @@ export const aiModes: AIMode[] = [
     id: "research",
     label: "Research Assistant",
     icon: "🔬",
-    description: "Deep research and analysis",
+    description: "Deep research with citations",
     color: "from-violet-500 to-purple-500",
+    requiredPlan: "advanced",
     prompts: [
       { icon: "🔍", title: "Deep dive", description: "Thorough analysis of any topic" },
       { icon: "📊", title: "Compare options", description: "Side-by-side analysis" },
@@ -129,6 +248,7 @@ export const aiModes: AIMode[] = [
     icon: "💻",
     description: "Write, debug, and explain code",
     color: "from-cyan-500 to-blue-500",
+    requiredPlan: "advanced",
     prompts: [
       { icon: "🛠️", title: "Debug my code", description: "Find and fix bugs fast" },
       { icon: "⚡", title: "Optimize code", description: "Make it faster and cleaner" },
@@ -142,11 +262,68 @@ export const aiModes: AIMode[] = [
     icon: "💼",
     description: "Strategy, planning, and operations",
     color: "from-rose-500 to-pink-500",
+    requiredPlan: "advanced",
     prompts: [
       { icon: "📊", title: "Business plan", description: "Structure your strategy" },
       { icon: "💰", title: "Financial analysis", description: "Numbers and projections" },
       { icon: "🎯", title: "OKRs & Goals", description: "Set and track objectives" },
       { icon: "📧", title: "Client outreach", description: "Professional communication" },
+    ],
+  },
+  {
+    id: "document",
+    label: "Document AI",
+    icon: "📄",
+    description: "Upload and chat with documents",
+    color: "from-sky-500 to-indigo-500",
+    requiredPlan: "advanced",
+    prompts: [
+      { icon: "📋", title: "Summarize document", description: "Get key points from any file" },
+      { icon: "❓", title: "Ask about document", description: "Q&A on uploaded files" },
+      { icon: "📊", title: "Extract data", description: "Pull structured data from docs" },
+      { icon: "🔍", title: "Find insights", description: "Discover hidden patterns" },
+    ],
+  },
+  {
+    id: "slides",
+    label: "Slide AI",
+    icon: "📊",
+    description: "Generate AI presentations",
+    color: "from-fuchsia-500 to-pink-500",
+    requiredPlan: "pro",
+    prompts: [
+      { icon: "🎯", title: "Pitch deck", description: "Startup or business pitch" },
+      { icon: "📈", title: "Report slides", description: "Data-driven presentations" },
+      { icon: "🎓", title: "Lecture slides", description: "Educational presentations" },
+      { icon: "💼", title: "Team update", description: "Weekly/monthly team slides" },
+    ],
+  },
+  {
+    id: "ideas",
+    label: "Idea AI",
+    icon: "💡",
+    description: "Brainstorm and innovate",
+    color: "from-yellow-500 to-amber-500",
+    requiredPlan: "pro",
+    prompts: [
+      { icon: "🚀", title: "Startup ideas", description: "Innovative business concepts" },
+      { icon: "📣", title: "Marketing ideas", description: "Creative campaign strategies" },
+      { icon: "🏗️", title: "Project planning", description: "Structure and plan projects" },
+      { icon: "🎨", title: "Creative concepts", description: "Out-of-the-box thinking" },
+    ],
+  },
+  {
+    id: "content",
+    label: "Content AI",
+    icon: "📝",
+    description: "Generate any type of content",
+    color: "from-lime-500 to-green-500",
+    requiredPlan: "pro",
+    prompts: [
+      { icon: "📰", title: "Blog article", description: "SEO-optimized long-form content" },
+      { icon: "📱", title: "Social media", description: "Engaging posts for any platform" },
+      { icon: "📧", title: "Newsletter", description: "Email campaigns and newsletters" },
+      { icon: "📄", title: "Landing page", description: "Conversion-focused copy" },
     ],
   },
 ];
@@ -155,6 +332,8 @@ export const promptLibrary: PromptTemplate[] = [
   { id: "w1", category: "Writing", title: "Professional Email", prompt: "Write a professional email about: ", icon: "📧" },
   { id: "w2", category: "Writing", title: "Blog Post Outline", prompt: "Create a detailed blog post outline for: ", icon: "📝" },
   { id: "w3", category: "Writing", title: "Social Media Post", prompt: "Write an engaging social media post about: ", icon: "📱" },
+  { id: "w4", category: "Writing", title: "Story Generator", prompt: "Write a creative short story about: ", icon: "📖" },
+  { id: "w5", category: "Writing", title: "Grammar Check", prompt: "Check and correct the grammar in: ", icon: "✅" },
   { id: "s1", category: "Study", title: "Concept Explanation", prompt: "Explain this concept in simple terms: ", icon: "🧠" },
   { id: "s2", category: "Study", title: "Study Guide", prompt: "Create a comprehensive study guide for: ", icon: "📚" },
   { id: "s3", category: "Study", title: "Practice Questions", prompt: "Generate practice questions about: ", icon: "✅" },
@@ -170,23 +349,30 @@ export const promptLibrary: PromptTemplate[] = [
   { id: "m1", category: "Marketing", title: "Marketing Strategy", prompt: "Create a marketing strategy for: ", icon: "📈" },
   { id: "m2", category: "Marketing", title: "Ad Copy", prompt: "Write compelling ad copy for: ", icon: "💡" },
   { id: "m3", category: "Marketing", title: "SEO Content", prompt: "Write SEO-optimized content about: ", icon: "🔍" },
+  { id: "r1", category: "Research", title: "Topic Research", prompt: "Provide a comprehensive research summary on: ", icon: "🔬" },
+  { id: "r2", category: "Research", title: "Competitive Analysis", prompt: "Analyze the competitive landscape for: ", icon: "📊" },
+  { id: "sl1", category: "Slides", title: "Pitch Deck", prompt: "Generate a pitch deck outline for: ", icon: "🎯" },
+  { id: "sl2", category: "Slides", title: "Lecture Slides", prompt: "Create lecture slides about: ", icon: "🎓" },
 ];
 
 export const quickTools: QuickTool[] = [
-  { id: "t1", title: "Summarize", description: "Condense any text", icon: "📋", action: "Summarize the following text: " },
-  { id: "t2", title: "Rewrite", description: "Improve and rephrase", icon: "✨", action: "Rewrite and improve the following: " },
-  { id: "t3", title: "Translate", description: "Any language pair", icon: "🌐", action: "Translate the following text: " },
-  { id: "t4", title: "Email Draft", description: "Quick professional email", icon: "📧", action: "Draft a professional email about: " },
-  { id: "t5", title: "Explain Code", description: "Understand any code", icon: "💻", action: "Explain this code step by step: " },
-  { id: "t6", title: "Study Notes", description: "Create study material", icon: "📚", action: "Create detailed study notes for: " },
-  { id: "t7", title: "Brainstorm", description: "Generate ideas", icon: "💡", action: "Brainstorm creative ideas for: " },
-  { id: "t8", title: "Analyze", description: "Deep analysis", icon: "🔍", action: "Provide a detailed analysis of: " },
+  { id: "t1", title: "Summarize", description: "Condense any text", icon: "📋", action: "Summarize the following text: ", requiredPlan: "guest" },
+  { id: "t2", title: "Rewrite", description: "Improve and rephrase", icon: "✨", action: "Rewrite and improve the following: ", requiredPlan: "basic" },
+  { id: "t3", title: "Translate", description: "Any language pair", icon: "🌐", action: "Translate the following text: ", requiredPlan: "basic" },
+  { id: "t4", title: "Email Draft", description: "Quick professional email", icon: "📧", action: "Draft a professional email about: ", requiredPlan: "basic" },
+  { id: "t5", title: "Explain Code", description: "Understand any code", icon: "💻", action: "Explain this code step by step: ", requiredPlan: "advanced" },
+  { id: "t6", title: "Study Notes", description: "Create study material", icon: "📚", action: "Create detailed study notes for: ", requiredPlan: "basic" },
+  { id: "t7", title: "Brainstorm", description: "Generate ideas", icon: "💡", action: "Brainstorm creative ideas for: ", requiredPlan: "pro" },
+  { id: "t8", title: "Analyze", description: "Deep analysis", icon: "🔍", action: "Provide a detailed analysis of: ", requiredPlan: "advanced" },
+  { id: "t9", title: "Generate Slides", description: "Create presentations", icon: "📊", action: "Create a presentation outline for: ", requiredPlan: "pro" },
+  { id: "t10", title: "Write Content", description: "Blog & social posts", icon: "📝", action: "Write engaging content about: ", requiredPlan: "pro" },
 ];
 
 export const aiModels: AIModel[] = [
   { id: "nova-fast", name: "Nova Fast", description: "Quick responses, great for simple tasks", badge: "Fast" },
   { id: "nova-smart", name: "Nova Smart", description: "Balanced speed and intelligence", badge: "Default" },
   { id: "nova-pro", name: "Nova Pro", description: "Most capable, best for complex tasks", badge: "Pro" },
+  { id: "nova-research", name: "Nova Research", description: "Deep reasoning with web search", badge: "Research" },
 ];
 
 export const defaultMemory: MemoryItem[] = [
@@ -196,7 +382,7 @@ export const defaultMemory: MemoryItem[] = [
   { id: "m4", type: "context", content: "Interested in web development and AI", createdAt: new Date(Date.now() - 259200000) },
 ];
 
-export const chatFolders = ["All", "Work", "Personal", "Study", "Projects"];
+export const chatFolders = ["All", "Work", "Personal", "Study", "Projects", "Research"];
 
 export const dummyChats: Chat[] = [
   {

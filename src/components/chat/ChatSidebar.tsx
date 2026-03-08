@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Search, Pin, Trash2, PenLine, Settings, User,
   MessageSquare, ChevronLeft, Sun, Moon, MoreHorizontal,
-  Brain, BookOpen, FolderOpen, Star,
+  Brain, BookOpen, FolderOpen, Star, Crown, LogIn, Download, Share2,
 } from "lucide-react";
 import { Chat, chatFolders } from "@/lib/chatData";
 
@@ -23,12 +23,16 @@ interface ChatSidebarProps {
   onOpenSettings: () => void;
   onOpenMemory: () => void;
   onOpenPromptLibrary: () => void;
+  currentPlan: string;
+  onUpgrade: () => void;
+  isLoggedIn: boolean;
+  onLogin: () => void;
 }
 
 export default function ChatSidebar({
   chats, activeChatId, onSelectChat, onNewChat, onDeleteChat,
   onRenameChat, onPinChat, onStarChat, isOpen, onToggle, darkMode, onToggleTheme,
-  onOpenSettings, onOpenMemory, onOpenPromptLibrary,
+  onOpenSettings, onOpenMemory, onOpenPromptLibrary, currentPlan, onUpgrade, isLoggedIn, onLogin,
 }: ChatSidebarProps) {
   const [search, setSearch] = useState("");
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
@@ -55,6 +59,9 @@ export default function ChatSidebar({
     setRenaming(null);
   };
 
+  const planLabel: Record<string, string> = { guest: "Guest", basic: "Basic", advanced: "Advanced", pro: "Pro" };
+  const planColor: Record<string, string> = { guest: "text-muted-foreground", basic: "text-primary", advanced: "text-accent", pro: "text-warning" };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -71,7 +78,10 @@ export default function ChatSidebar({
               <div className="w-7 h-7 rounded-lg gradient-btn flex items-center justify-center">
                 <span className="text-xs font-bold text-primary-foreground">N</span>
               </div>
-              <h2 className="text-sm font-bold font-display gradient-text">Nova AI</h2>
+              <div>
+                <h2 className="text-sm font-bold font-display gradient-text">Nova AI</h2>
+                <p className={`text-[9px] font-semibold ${planColor[currentPlan]}`}>{planLabel[currentPlan]} Plan</p>
+              </div>
             </div>
             <button onClick={onToggle} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
               <ChevronLeft className="w-4 h-4 text-muted-foreground" />
@@ -187,6 +197,16 @@ export default function ChatSidebar({
 
           {/* Footer */}
           <div className="p-3 border-t border-border space-y-1">
+            {/* Upgrade button */}
+            {currentPlan !== "pro" && (
+              <button
+                onClick={onUpgrade}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg gradient-btn text-primary-foreground text-xs font-semibold transition-all hover:opacity-90 mb-1"
+              >
+                <Crown className="w-4 h-4" />
+                Upgrade to {currentPlan === "guest" ? "Basic" : currentPlan === "basic" ? "Advanced" : "Pro"}
+              </button>
+            )}
             <button
               onClick={onToggleTheme}
               className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted text-sm text-muted-foreground transition-colors"
@@ -201,15 +221,25 @@ export default function ChatSidebar({
               <Settings className="w-4 h-4" />
               Settings
             </button>
-            <div className="flex items-center gap-2 px-3 py-2">
-              <div className="w-7 h-7 rounded-full gradient-btn flex items-center justify-center">
-                <User className="w-3.5 h-3.5 text-primary-foreground" />
+            {isLoggedIn ? (
+              <div className="flex items-center gap-2 px-3 py-2">
+                <div className="w-7 h-7 rounded-full gradient-btn flex items-center justify-center">
+                  <User className="w-3.5 h-3.5 text-primary-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-foreground truncate">John Doe</p>
+                  <p className={`text-[10px] font-semibold ${planColor[currentPlan]}`}>{planLabel[currentPlan]} Plan</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-foreground truncate">John Doe</p>
-                <p className="text-[10px] text-muted-foreground">Pro Plan</p>
-              </div>
-            </div>
+            ) : (
+              <button
+                onClick={onLogin}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 text-primary text-sm font-medium transition-colors hover:bg-primary/20"
+              >
+                <LogIn className="w-4 h-4" />
+                Sign In for More Features
+              </button>
+            )}
           </div>
         </motion.aside>
       )}
@@ -275,7 +305,7 @@ function ChatItem({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="absolute right-1 top-full z-50 mt-1 w-36 rounded-lg glass-heavy border border-border float-shadow py-1"
+            className="absolute right-1 top-full z-50 mt-1 w-40 rounded-lg glass-heavy border border-border float-shadow py-1"
           >
             <button onClick={onStartRename} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted transition-colors text-foreground">
               <PenLine className="w-3 h-3" /> Rename
@@ -285,6 +315,12 @@ function ChatItem({
             </button>
             <button onClick={onStar} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted transition-colors text-foreground">
               <Star className="w-3 h-3" /> {chat.starred ? "Unstar" : "Star"}
+            </button>
+            <button onClick={() => {}} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted transition-colors text-foreground">
+              <Share2 className="w-3 h-3" /> Share
+            </button>
+            <button onClick={() => {}} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted transition-colors text-foreground">
+              <Download className="w-3 h-3" /> Export
             </button>
             <button onClick={onDelete} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted transition-colors text-destructive">
               <Trash2 className="w-3 h-3" /> Delete
