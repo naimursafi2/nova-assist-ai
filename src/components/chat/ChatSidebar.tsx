@@ -23,6 +23,7 @@ interface ChatSidebarProps {
   onOpenSettings: () => void;
   onOpenMemory: () => void;
   onOpenPromptLibrary: () => void;
+  onOpenProfile: () => void;
   currentPlan: string;
   onUpgrade: () => void;
   isLoggedIn: boolean;
@@ -32,7 +33,7 @@ interface ChatSidebarProps {
 export default function ChatSidebar({
   chats, activeChatId, onSelectChat, onNewChat, onDeleteChat,
   onRenameChat, onPinChat, onStarChat, isOpen, onToggle, darkMode, onToggleTheme,
-  onOpenSettings, onOpenMemory, onOpenPromptLibrary, currentPlan, onUpgrade, isLoggedIn, onLogin,
+  onOpenSettings, onOpenMemory, onOpenPromptLibrary, onOpenProfile, currentPlan, onUpgrade, isLoggedIn, onLogin,
 }: ChatSidebarProps) {
   const [search, setSearch] = useState("");
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
@@ -222,15 +223,18 @@ export default function ChatSidebar({
               Settings
             </button>
             {isLoggedIn ? (
-              <div className="flex items-center gap-2 px-3 py-2">
+              <button
+                onClick={onOpenProfile}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted transition-colors"
+              >
                 <div className="w-7 h-7 rounded-full gradient-btn flex items-center justify-center">
                   <User className="w-3.5 h-3.5 text-primary-foreground" />
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 text-left">
                   <p className="text-xs font-medium text-foreground truncate">John Doe</p>
                   <p className={`text-[10px] font-semibold ${planColor[currentPlan]}`}>{planLabel[currentPlan]} Plan</p>
                 </div>
-              </div>
+              </button>
             ) : (
               <button
                 onClick={onLogin}

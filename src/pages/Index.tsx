@@ -8,6 +8,7 @@ import ChatWindow from "@/components/chat/ChatWindow";
 import ChatInput from "@/components/chat/ChatInput";
 import ModeSwitcher from "@/components/chat/ModeSwitcher";
 import SettingsModal from "@/components/chat/SettingsModal";
+import ProfilePanel from "@/components/chat/ProfilePanel";
 import MemoryPanel from "@/components/chat/MemoryPanel";
 import PromptLibraryModal from "@/components/chat/PromptLibraryModal";
 import CommandPalette from "@/components/chat/CommandPalette";
@@ -41,6 +42,7 @@ export default function Index() {
   const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [messageCount, setMessageCount] = useState(0);
   const streamingRef = useRef(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
@@ -331,6 +333,7 @@ export default function Index() {
         onOpenSettings={() => setShowSettings(true)}
         onOpenMemory={() => setShowMemory(true)}
         onOpenPromptLibrary={() => setShowPromptLibrary(true)}
+        onOpenProfile={() => setShowProfile(true)}
         currentPlan={currentPlan}
         onUpgrade={() => setShowSubscription(true)}
         isLoggedIn={isLoggedIn}
@@ -414,6 +417,14 @@ export default function Index() {
         onClose={() => setShowSubscription(false)}
         currentPlan={currentPlan}
         onSelectPlan={(plan) => { setCurrentPlan(plan); setShowSubscription(false); }}
+      />
+      <ProfilePanel
+        isOpen={showProfile}
+        onClose={() => setShowProfile(false)}
+        currentPlan={currentPlan}
+        messageCount={messageCount}
+        onUpgrade={() => { setShowProfile(false); setShowSubscription(true); }}
+        onLogout={() => { setIsLoggedIn(false); setShowProfile(false); }}
       />
     </div>
   );
