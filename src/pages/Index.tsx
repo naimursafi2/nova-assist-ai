@@ -92,7 +92,7 @@ export default function Index() {
 
       setUploadedFiles([]);
       setUploadedImages([]);
-      setMessageCount((prev) => prev + 1);
+      incrementUsage();
 
       let targetChatId = activeChatId;
 
