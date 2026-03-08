@@ -13,22 +13,6 @@ import PromptLibraryModal from "@/components/chat/PromptLibraryModal";
 import CommandPalette from "@/components/chat/CommandPalette";
 import SubscriptionModal from "@/components/chat/SubscriptionModal";
 
-const AI_RESPONSES_EN = [
-  "That's a great question! Let me break it down for you.\n\nHere are the key points:\n\n1. **Start with the basics** — understand the fundamentals first\n2. **Practice regularly** — consistency is key\n3. **Build projects** — apply what you learn\n\nWould you like me to elaborate on any of these?",
-  "I'd be happy to help with that! Here's what I recommend:\n\n```javascript\nconst solution = () => {\n  // Your implementation here\n  return 'success';\n};\n```\n\nThis approach is clean and maintainable. Let me know if you need more details!",
-  "Absolutely! Here's a comprehensive overview:\n\n## Overview\nThis topic covers several important aspects that are worth understanding.\n\n## Key Takeaways\n- Focus on **quality** over quantity\n- Use modern tools and frameworks\n- Keep learning and adapting\n\nFeel free to ask follow-up questions!",
-];
-
-const MODE_RESPONSES: Record<string, string> = {
-  slides: "📊 **Slide Deck Generated!**\n\nHere's your presentation outline:\n\n## Slide 1: Title\n**Your Topic** — A compelling subtitle\n\n## Slide 2: Overview\n- Key point 1\n- Key point 2\n- Key point 3\n\n## Slide 3: Deep Dive\nDetailed analysis with data visualizations\n\n## Slide 4: Conclusion\nKey takeaways and next steps\n\n---\n*💡 Tip: You can ask me to expand any slide or change the style.*",
-  ideas: "💡 **Brainstorm Results**\n\nHere are some innovative ideas:\n\n### 🚀 Concept 1: AI-Powered Solution\nLeverage machine learning to automate the process\n\n### 🎯 Concept 2: Community-Driven\nBuild a platform where users contribute and benefit\n\n### 💎 Concept 3: Premium Experience\nCreate a high-value offering with exclusive features\n\n### 📈 Concept 4: Data-First Approach\nUse analytics to drive decisions\n\n*Which idea interests you most?*",
-  content: "📝 **Content Generated!**\n\n# Your Article Title\n\n## Introduction\nCapture attention with a compelling hook that draws readers in...\n\n## Main Points\n\n### 1. The Current Landscape\nAnalysis of where things stand today.\n\n### 2. Key Trends\nWhat's changing and why it matters.\n\n### 3. Actionable Steps\nConcrete things readers can do right now.\n\n## Conclusion\nWrap up with a strong call to action.\n\n---\n*Want me to expand any section or adjust the tone?*",
-  document: "📄 **Document Analysis Complete**\n\n## Key Findings\n- **Main Topic**: The document discusses...\n- **Word Count**: ~2,500 words\n- **Reading Level**: Professional\n\n## Summary\nThe document covers three main areas with detailed analysis and recommendations.\n\n## Key Insights\n1. Important finding #1\n2. Critical data point #2\n3. Action item #3\n\n*Ask me specific questions about the document!*",
-  research: "🔬 **Research Report**\n\n## Topic Analysis\n\n### Background\nComprehensive overview of the current state of research.\n\n### Key Sources\n📚 Academic papers, industry reports, and expert analyses\n\n### Findings\n1. **Primary finding** — Supported by multiple sources\n2. **Secondary finding** — Emerging trend\n3. **Tertiary finding** — Requires further study\n\n### Conclusion\nThe evidence suggests...\n\n*Sources: 12 academic papers, 5 industry reports*",
-};
-
-const IMAGE_ANALYSIS_RESPONSE = "🖼️ **Image Analysis Complete**\n\n## Visual Description\nThe image contains interesting visual elements.\n\n## Key Observations\n- **Composition**: Well-structured layout\n- **Colors**: Cohesive palette\n- **Details**: Notable details worth highlighting\n\nWould you like me to focus on any specific aspect?";
-
 const planLevel: Record<string, number> = { guest: 0, basic: 1, advanced: 2, pro: 3 };
 const planMessageLimits: Record<string, number> = { guest: 5, basic: 50, advanced: 200, pro: 9999 };
 
