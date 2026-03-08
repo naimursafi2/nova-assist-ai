@@ -82,16 +82,21 @@ export default function Index() {
 
       const generateAiResponse = (chatId: string) => {
         setIsTyping(true);
+
+        // Get current conversation history for this chat
+        const currentChat = chats.find(c => c.id === chatId);
+        const history = currentChat ? [...currentChat.messages, userMsg] : [userMsg];
+
         setTimeout(() => {
-          let responseContent: string;
-          if (hasImages) {
-            responseContent = IMAGE_ANALYSIS_RESPONSE;
-          } else if (MODE_RESPONSES[activeMode]) {
-            responseContent = MODE_RESPONSES[activeMode];
-          } else {
-            const multiResponse = getMultilingualResponse(responseLang, detected.isBanglish);
-            responseContent = multiResponse || AI_RESPONSES_EN[Math.floor(Math.random() * AI_RESPONSES_EN.length)];
-          }
+          const responseContent = generateSmartResponse({
+            userMessage: content,
+            conversationHistory: history,
+            activeMode,
+            language: responseLang,
+            isBanglish: detected.isBanglish,
+            hasImages,
+            hasFiles: uploadedFiles.length > 0,
+          });
 
           const aiMsg: Message = {
             id: (Date.now() + 1).toString(),
@@ -109,7 +114,7 @@ export default function Index() {
             )
           );
           setIsTyping(false);
-        }, 1500);
+        }, 1200 + Math.random() * 800);
       };
 
       if (!activeChatId) {
