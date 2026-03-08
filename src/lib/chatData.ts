@@ -369,10 +369,10 @@ export const quickTools: QuickTool[] = [
 ];
 
 export const aiModels: AIModel[] = [
-  { id: "nova-fast", name: "Nova Fast", description: "Quick responses, great for simple tasks", badge: "Fast" },
-  { id: "nova-smart", name: "Nova Smart", description: "Balanced speed and intelligence", badge: "Default" },
-  { id: "nova-pro", name: "Nova Pro", description: "Most capable, best for complex tasks", badge: "Pro" },
-  { id: "nova-research", name: "Nova Research", description: "Deep reasoning with web search", badge: "Research" },
+  { id: "aura-fast", name: "Aura Fast", description: "Quick responses, great for simple tasks", badge: "Fast" },
+  { id: "aura-smart", name: "Aura Smart", description: "Balanced speed and intelligence", badge: "Default" },
+  { id: "aura-pro", name: "Aura Pro", description: "Most capable, best for complex tasks", badge: "Pro" },
+  { id: "aura-research", name: "Aura Research", description: "Deep reasoning with web search", badge: "Research" },
 ];
 
 export const defaultMemory: MemoryItem[] = [

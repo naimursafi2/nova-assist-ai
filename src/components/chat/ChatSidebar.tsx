@@ -77,7 +77,7 @@ export default function ChatSidebar({
           <div className="p-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-lg gradient-btn flex items-center justify-center">
-                <span className="text-xs font-bold text-primary-foreground">N</span>
+                <span className="text-xs font-bold text-primary-foreground">A</span>
               </div>
               <div>
                 <h2 className="text-sm font-bold font-display gradient-text">Aura AI</h2>

@@ -26,7 +26,7 @@ export default function Index() {
   const [darkMode, setDarkMode] = useState(true);
   const [activeMode, setActiveMode] = useState("chat");
   const [webSearch, setWebSearch] = useState(false);
-  const [selectedModel, setSelectedModel] = useState("nova-smart");
+  const [selectedModel, setSelectedModel] = useState("aura-smart");
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [memoryEnabled, setMemoryEnabled] = useState(true);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
