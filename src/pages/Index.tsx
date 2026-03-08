@@ -420,7 +420,7 @@ export default function Index() {
         isOpen={showSubscription}
         onClose={() => setShowSubscription(false)}
         currentPlan={currentPlan}
-        onSelectPlan={(plan) => { setCurrentPlan(plan); setShowSubscription(false); }}
+        onSelectPlan={(plan) => { setShowSubscription(false); }}
       />
       <ProfilePanel
         isOpen={showProfile}
