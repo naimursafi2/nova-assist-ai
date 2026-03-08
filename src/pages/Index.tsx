@@ -341,7 +341,7 @@ export default function Index() {
         currentPlan={currentPlan}
         onUpgrade={() => setShowSubscription(true)}
         isLoggedIn={isLoggedIn}
-        onLogin={() => setIsLoggedIn(true)}
+        onLogin={() => loginWithGoogle()}
       />
 
       <div className="flex-1 flex flex-col min-w-0">
