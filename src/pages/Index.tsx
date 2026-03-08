@@ -187,8 +187,9 @@ export default function Index() {
     setUploadedImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSelectMode = (mode: string) => {
-    const modeData = (await import("@/lib/chatData")).aiModes.find((m) => m.id === mode);
+  const handleSelectMode = useCallback((mode: string) => {
+    const { aiModes } = require("@/lib/chatData");
+    const modeData = aiModes.find((m: any) => m.id === mode);
     if (modeData) {
       const requiredLevel = planLevel[modeData.requiredPlan] || 0;
       const userLevel = planLevel[currentPlan] || 0;
@@ -198,7 +199,7 @@ export default function Index() {
       }
     }
     setActiveMode(mode);
-  };
+  }, [currentPlan]);
 
   const handleCommandAction = useCallback((action: string, payload?: string) => {
     switch (action) {
