@@ -425,10 +425,7 @@ export default function Index() {
       <ProfilePanel
         isOpen={showProfile}
         onClose={() => setShowProfile(false)}
-        currentPlan={currentPlan}
-        messageCount={messageCount}
         onUpgrade={() => { setShowProfile(false); setShowSubscription(true); }}
-        onLogout={() => { setIsLoggedIn(false); setShowProfile(false); }}
       />
     </div>
   );
