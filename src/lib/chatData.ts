@@ -100,7 +100,7 @@ export const subscriptionPlans: SubscriptionPlan[] = [
     name: "Guest",
     price: "Free",
     period: "",
-    description: "Try Nova AI without signing up",
+    description: "Try Aura AI without signing up",
     color: "from-muted to-secondary",
     features: [
       "5 messages per day",
