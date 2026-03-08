@@ -539,8 +539,8 @@ function wrapBanglaResponse(intent: Intent): string {
 
 function wrapBanglishResponse(intent: Intent): string {
   const responses: Record<string, string> = {
-    greeting: `Hey! 👋 Ami **Nova AI** — tomar intelligent assistant!\n\nAmi help korte pari:\n- 💻 **Programming** — JavaScript, Python, React\n- 📝 **Writing** — Article, content\n- 🔬 **Research** — Analysis\n- 💡 **Ideas** — Brainstorming\n\nKi niye help chai? Bolo! 🚀`,
-    who_are_you: `Ami **Nova AI**! 🚀 Tomar intelligent coding & knowledge assistant.\n\nAmi code likhte pari, explain korte pari, debug korte pari — just bolo ki dorkar! 😊`,
+    greeting: `Hey! 👋 Ami **Aura AI** — tomar intelligent assistant!\n\nAmi help korte pari:\n- 💻 **Programming** — JavaScript, Python, React\n- 📝 **Writing** — Article, content\n- 🔬 **Research** — Analysis\n- 💡 **Ideas** — Brainstorming\n\nKi niye help chai? Bolo! 🚀`,
+    who_are_you: `Ami **Aura AI**! 🚀 Tomar intelligent coding & knowledge assistant.\n\nAmi code likhte pari, explain korte pari, debug korte pari — just bolo ki dorkar! 😊`,
     thanks: `Welcome! 😊 Help korte pere happy!\n\nAr kisu janthe chaile bolo! 🚀`,
     farewell: `Bye! 👋 Abar dekha hobe. Jodi kono help lage, chole esho! 😊`,
     unclear: `Ami tomar question ta bujhte chai! 🤔\n\nEktu specific kore bolo:\n- Ki topic niye janthe chao?\n- Code example lagbe?\n- Kono concept explain korte hobe?\n\nAmi ready! 💡`,
