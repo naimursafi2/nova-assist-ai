@@ -333,6 +333,7 @@ export default function Index() {
         onOpenSettings={() => setShowSettings(true)}
         onOpenMemory={() => setShowMemory(true)}
         onOpenPromptLibrary={() => setShowPromptLibrary(true)}
+        onOpenProfile={() => setShowProfile(true)}
         currentPlan={currentPlan}
         onUpgrade={() => setShowSubscription(true)}
         isLoggedIn={isLoggedIn}
