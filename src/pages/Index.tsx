@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { Chat, Message, UploadedFile, dummyChats } from "@/lib/chatData";
+import { Chat, Message, UploadedFile, dummyChats, aiModes as allModes } from "@/lib/chatData";
 import { detectLanguage, getMultilingualResponse } from "@/lib/languageUtils";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import ChatHeader from "@/components/chat/ChatHeader";
