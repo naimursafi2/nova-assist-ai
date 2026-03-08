@@ -1,7 +1,7 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Chat, Message, UploadedFile, dummyChats, aiModes as allModes } from "@/lib/chatData";
 import { detectLanguage } from "@/lib/languageUtils";
-import { generateSmartResponse } from "@/lib/responseEngine";
+import { streamChat, ChatMessage } from "@/lib/streamChat";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import ChatHeader from "@/components/chat/ChatHeader";
 import ChatWindow from "@/components/chat/ChatWindow";
@@ -12,6 +12,7 @@ import MemoryPanel from "@/components/chat/MemoryPanel";
 import PromptLibraryModal from "@/components/chat/PromptLibraryModal";
 import CommandPalette from "@/components/chat/CommandPalette";
 import SubscriptionModal from "@/components/chat/SubscriptionModal";
+import { toast } from "sonner";
 
 const planLevel: Record<string, number> = { guest: 0, basic: 1, advanced: 2, pro: 3 };
 const planMessageLimits: Record<string, number> = { guest: 5, basic: 50, advanced: 200, pro: 9999 };
@@ -39,6 +40,7 @@ export default function Index() {
   const [currentPlan, setCurrentPlan] = useState<string>("advanced");
   const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [messageCount, setMessageCount] = useState(0);
+  const streamingRef = useRef(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
@@ -46,9 +48,18 @@ export default function Index() {
 
   const activeChat = chats.find((c) => c.id === activeChatId) || null;
 
+  // Convert chat history to API format
+  const buildApiMessages = (chatMessages: Message[]): ChatMessage[] => {
+    return chatMessages.map((m) => ({
+      role: m.role === "user" ? "user" as const : "assistant" as const,
+      content: m.content,
+    }));
+  };
+
   const handleSend = useCallback(
     (content: string) => {
-      // Check message limit
+      if (streamingRef.current) return;
+
       const limit = planMessageLimits[currentPlan] || 5;
       if (messageCount >= limit) {
         setShowSubscription(true);
@@ -64,79 +75,109 @@ export default function Index() {
         setTimeout(() => setDetectedLanguage(null), 5000);
       }
 
-      const responseLang = selectedLanguage === "auto" ? detected.code : selectedLanguage;
-      const hasImages = uploadedImages.length > 0;
-
       const userMsg: Message = {
         id: Date.now().toString(),
         role: "user",
         content,
         timestamp: new Date(),
         files: uploadedFiles.length > 0 ? [...uploadedFiles] : undefined,
-        images: hasImages ? [...uploadedImages] : undefined,
+        images: uploadedImages.length > 0 ? [...uploadedImages] : undefined,
       };
 
       setUploadedFiles([]);
       setUploadedImages([]);
       setMessageCount((prev) => prev + 1);
 
-      const generateAiResponse = (chatId: string) => {
-        setIsTyping(true);
-
-        // Get current conversation history for this chat
-        const currentChat = chats.find(c => c.id === chatId);
-        const history = currentChat ? [...currentChat.messages, userMsg] : [userMsg];
-
-        setTimeout(() => {
-          const responseContent = generateSmartResponse({
-            userMessage: content,
-            conversationHistory: history,
-            activeMode,
-            language: responseLang,
-            isBanglish: detected.isBanglish,
-            hasImages,
-            hasFiles: uploadedFiles.length > 0,
-          });
-
-          const aiMsg: Message = {
-            id: (Date.now() + 1).toString(),
-            role: "ai",
-            content: responseContent,
-            timestamp: new Date(),
-            sources: webSearch ? [
-              { title: "Relevant Article", url: "https://example.com", snippet: "Found via web search..." },
-              { title: "Research Paper", url: "https://example.com/paper", snippet: "Academic source with citations..." },
-            ] : undefined,
-          };
-          setChats((prev) =>
-            prev.map((c) =>
-              c.id === chatId ? { ...c, messages: [...c.messages, aiMsg] } : c
-            )
-          );
-          setIsTyping(false);
-        }, 1200 + Math.random() * 800);
-      };
+      let targetChatId = activeChatId;
 
       if (!activeChatId) {
         const newChat: Chat = {
           id: Date.now().toString(),
-          title: content ? content.slice(0, 40) : "Image Analysis",
+          title: content.slice(0, 40) || "New Chat",
           messages: [userMsg],
           createdAt: new Date(),
         };
         setChats((prev) => [newChat, ...prev]);
         setActiveChatId(newChat.id);
-        generateAiResponse(newChat.id);
+        targetChatId = newChat.id;
       } else {
         setChats((prev) =>
           prev.map((c) =>
             c.id === activeChatId ? { ...c, messages: [...c.messages, userMsg] } : c
           )
         );
-        generateAiResponse(activeChatId);
       }
+
+      // Start streaming AI response
+      setIsTyping(true);
+      streamingRef.current = true;
+
+      const aiMsgId = (Date.now() + 1).toString();
+
+      // Build history for the API
+      const currentChat = chats.find(c => c.id === targetChatId);
+      const allMessages = currentChat ? [...currentChat.messages, userMsg] : [userMsg];
+      const apiMessages = buildApiMessages(allMessages);
+
+      // Create empty AI message that will be filled by streaming
+      const emptyAiMsg: Message = {
+        id: aiMsgId,
+        role: "ai",
+        content: "",
+        timestamp: new Date(),
+      };
+      setChats((prev) =>
+        prev.map((c) =>
+          c.id === targetChatId ? { ...c, messages: [...c.messages, emptyAiMsg] } : c
+        )
+      );
+
+      let accumulated = "";
+
+      streamChat({
+        messages: apiMessages,
+        mode: activeMode,
+        onDelta: (chunk) => {
+          accumulated += chunk;
+          const currentContent = accumulated;
+          setChats((prev) =>
+            prev.map((c) => {
+              if (c.id !== targetChatId) return c;
+              return {
+                ...c,
+                messages: c.messages.map((m) =>
+                  m.id === aiMsgId ? { ...m, content: currentContent } : m
+                ),
+              };
+            })
+          );
+        },
+        onDone: () => {
+          setIsTyping(false);
+          streamingRef.current = false;
+        },
+        onError: (error) => {
+          setIsTyping(false);
+          streamingRef.current = false;
+          toast.error(error);
+          // Update the AI message with error
+          setChats((prev) =>
+            prev.map((c) => {
+              if (c.id !== targetChatId) return c;
+              return {
+                ...c,
+                messages: c.messages.map((m) =>
+                  m.id === aiMsgId
+                    ? { ...m, content: "⚠️ " + error + "\n\nPlease try again." }
+                    : m
+                ),
+              };
+            })
+          );
+        },
+      });
     },
-    [activeChatId, webSearch, uploadedFiles, uploadedImages, selectedLanguage, activeMode, currentPlan, messageCount]
+    [activeChatId, uploadedFiles, uploadedImages, selectedLanguage, activeMode, currentPlan, messageCount, chats]
   );
 
   const handleNewChat = () => {
