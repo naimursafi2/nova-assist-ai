@@ -418,6 +418,14 @@ export default function Index() {
         currentPlan={currentPlan}
         onSelectPlan={(plan) => { setCurrentPlan(plan); setShowSubscription(false); }}
       />
+      <ProfilePanel
+        isOpen={showProfile}
+        onClose={() => setShowProfile(false)}
+        currentPlan={currentPlan}
+        messageCount={messageCount}
+        onUpgrade={() => { setShowProfile(false); setShowSubscription(true); }}
+        onLogout={() => { setIsLoggedIn(false); setShowProfile(false); }}
+      />
     </div>
   );
 }
