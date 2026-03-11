@@ -37,6 +37,7 @@ export default function ChatSidebar({
   chats, activeChatId, onSelectChat, onNewChat, onDeleteChat,
   onRenameChat, onPinChat, onStarChat, isOpen, onToggle, darkMode, onToggleTheme,
   onOpenSettings, onOpenMemory, onOpenPromptLibrary, onOpenProfile, currentPlan, onUpgrade, isLoggedIn, onLogin,
+  loggingIn, userName, userPhotoURL,
 }: ChatSidebarProps) {
   const [search, setSearch] = useState("");
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
