@@ -28,6 +28,9 @@ interface ChatSidebarProps {
   onUpgrade: () => void;
   isLoggedIn: boolean;
   onLogin: () => void;
+  loggingIn?: boolean;
+  userName?: string;
+  userPhotoURL?: string;
 }
 
 export default function ChatSidebar({
