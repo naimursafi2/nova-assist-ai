@@ -246,10 +246,11 @@ export default function ChatSidebar({
             ) : (
               <button
                 onClick={onLogin}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 text-primary text-sm font-medium transition-colors hover:bg-primary/20"
+                disabled={loggingIn}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 text-primary text-sm font-medium transition-colors hover:bg-primary/20 disabled:opacity-50"
               >
                 <LogIn className="w-4 h-4" />
-                Sign In for More Features
+                {loggingIn ? "Signing in..." : "Sign In for More Features"}
               </button>
             )}
           </div>
