@@ -222,16 +222,20 @@ export default function ChatSidebar({
               <Settings className="w-4 h-4" />
               Settings
             </button>
-            {isLoggedIn ? (
+             {isLoggedIn ? (
               <button
                 onClick={onOpenProfile}
                 className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted transition-colors"
               >
-                <div className="w-7 h-7 rounded-full gradient-btn flex items-center justify-center">
-                  <User className="w-3.5 h-3.5 text-primary-foreground" />
-                </div>
+                {userPhotoURL ? (
+                  <img src={userPhotoURL} alt="" className="w-7 h-7 rounded-full object-cover" />
+                ) : (
+                  <div className="w-7 h-7 rounded-full gradient-btn flex items-center justify-center">
+                    <User className="w-3.5 h-3.5 text-primary-foreground" />
+                  </div>
+                )}
                 <div className="flex-1 min-w-0 text-left">
-                  <p className="text-xs font-medium text-foreground truncate">John Doe</p>
+                  <p className="text-xs font-medium text-foreground truncate">{userName || "User"}</p>
                   <p className={`text-[10px] font-semibold ${planColor[currentPlan]}`}>{planLabel[currentPlan]} Plan</p>
                 </div>
               </button>
