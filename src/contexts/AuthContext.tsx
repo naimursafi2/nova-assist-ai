@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { onAuthStateChanged, signInWithPopup, signOut, User } from "firebase/auth";
-import { ref, get, set } from "firebase/database";
+import { ref, get, set, update } from "firebase/database";
 import { auth, db, googleProvider } from "@/lib/firebase";
 
 export interface UserProfile {
@@ -15,12 +15,15 @@ export interface UserProfile {
   messageCount: number;
   lastUsageReset: string;
   createdAt: string;
+  lastLoginAt: string;
+  role?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
+  loggingIn: boolean;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   incrementUsage: () => Promise<boolean>;
@@ -48,23 +51,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loggingIn, setLoggingIn] = useState(false);
 
   const loadOrCreateProfile = async (fbUser: User) => {
     const userRef = ref(db, `users/${fbUser.uid}`);
     const snapshot = await get(userRef);
+    const now = new Date();
 
     if (snapshot.exists()) {
       const data = snapshot.val() as UserProfile;
       // Reset daily usage if needed
-      const today = new Date().toISOString().split("T")[0];
+      const today = now.toISOString().split("T")[0];
+      const updates: Partial<UserProfile> = { lastLoginAt: now.toISOString() };
       if (data.lastUsageReset !== today) {
-        data.dailyUsage = 0;
-        data.lastUsageReset = today;
-        await set(userRef, data);
+        updates.dailyUsage = 0;
+        updates.lastUsageReset = today;
       }
-      setProfile(data);
+      await update(userRef, updates);
+      setProfile({ ...data, ...updates });
     } else {
-      const now = new Date();
       const trialEnd = new Date(now);
       trialEnd.setDate(trialEnd.getDate() + 30);
 
@@ -80,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         messageCount: 0,
         lastUsageReset: now.toISOString().split("T")[0],
         createdAt: now.toISOString(),
+        lastLoginAt: now.toISOString(),
       };
       await set(userRef, newProfile);
       setProfile(newProfile);
@@ -95,12 +101,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(null);
       }
       setLoading(false);
+      setLoggingIn(false);
     });
     return unsub;
   }, []);
 
   const loginWithGoogle = async () => {
-    await signInWithPopup(auth, googleProvider);
+    setLoggingIn(true);
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (err) {
+      setLoggingIn(false);
+      throw err;
+    }
   };
 
   const logout = async () => {
@@ -109,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const incrementUsage = async (): Promise<boolean> => {
-    if (!user || !profile) return true; // guest mode, handled by parent
+    if (!user || !profile) return true;
     const limit = planMessageLimits[profile.plan] || 5;
     if (profile.dailyUsage >= limit) return false;
 
@@ -118,7 +131,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       dailyUsage: profile.dailyUsage + 1,
       messageCount: profile.messageCount + 1,
     };
-    await set(ref(db, `users/${user.uid}`), updated);
+    await update(ref(db, `users/${user.uid}`), {
+      dailyUsage: updated.dailyUsage,
+      messageCount: updated.messageCount,
+    });
     setProfile(updated);
     return true;
   };
@@ -134,6 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         profile,
         loading,
+        loggingIn,
         loginWithGoogle,
         logout,
         incrementUsage,

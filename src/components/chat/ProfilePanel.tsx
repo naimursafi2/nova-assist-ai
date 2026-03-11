@@ -1,16 +1,17 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, User, Crown, BarChart3, Mail, Edit2, LogOut, CreditCard, Camera, Calendar, Shield } from "lucide-react";
+import { X, User, Crown, BarChart3, Mail, LogOut, CreditCard, Calendar, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface ProfilePanelProps {
   isOpen: boolean;
   onClose: () => void;
   onUpgrade: () => void;
+  onOpenAdmin?: () => void;
 }
 
 const planLabel: Record<string, string> = { guest: "Guest", basic: "Basic", advanced: "Advanced", pro: "Pro" };
 
-export default function ProfilePanel({ isOpen, onClose, onUpgrade }: ProfilePanelProps) {
+export default function ProfilePanel({ isOpen, onClose, onUpgrade, onOpenAdmin }: ProfilePanelProps) {
   const { user, profile, logout, trialDaysRemaining, isTrialActive, planLimits } = useAuth();
 
   const messageCount = profile?.messageCount || 0;
@@ -44,8 +45,8 @@ export default function ProfilePanel({ isOpen, onClose, onUpgrade }: ProfilePane
 
               {/* Avatar */}
               <div className="relative inline-block mb-3">
-                {user?.photoURL ? (
-                  <img src={user.photoURL} alt="Profile" className="w-20 h-20 rounded-full object-cover border-2 border-primary" />
+                {(profile?.profileImage || user?.photoURL) ? (
+                  <img src={profile?.profileImage || user?.photoURL || ""} alt="Profile" className="w-20 h-20 rounded-full object-cover border-2 border-primary" />
                 ) : (
                   <div className="w-20 h-20 rounded-full gradient-btn flex items-center justify-center">
                     <User className="w-10 h-10 text-primary-foreground" />
@@ -125,6 +126,14 @@ export default function ProfilePanel({ isOpen, onClose, onUpgrade }: ProfilePane
               >
                 <CreditCard className="w-4 h-4 text-muted-foreground" /> Manage Subscription
               </button>
+              {onOpenAdmin && (
+                <button
+                  onClick={onOpenAdmin}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted transition-colors text-sm text-foreground"
+                >
+                  <Shield className="w-4 h-4 text-muted-foreground" /> Admin Dashboard
+                </button>
+              )}
               <button
                 onClick={async () => { await logout(); onClose(); }}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted transition-colors text-sm text-destructive"

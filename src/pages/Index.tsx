@@ -1,8 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Chat, Message, UploadedFile, dummyChats, aiModes as allModes } from "@/lib/chatData";
+import { Chat, Message, UploadedFile, aiModes as allModes } from "@/lib/chatData";
 import { detectLanguage } from "@/lib/languageUtils";
 import { streamChat, ChatMessage } from "@/lib/streamChat";
 import { useAuth } from "@/contexts/AuthContext";
+import { useFirebaseChats } from "@/hooks/useFirebaseChats";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import ChatHeader from "@/components/chat/ChatHeader";
 import ChatWindow from "@/components/chat/ChatWindow";
@@ -14,15 +15,16 @@ import MemoryPanel from "@/components/chat/MemoryPanel";
 import PromptLibraryModal from "@/components/chat/PromptLibraryModal";
 import CommandPalette from "@/components/chat/CommandPalette";
 import SubscriptionModal from "@/components/chat/SubscriptionModal";
+import AdminDashboard from "@/components/chat/AdminDashboard";
 import { toast } from "sonner";
 
 const planLevel: Record<string, number> = { guest: 0, basic: 1, advanced: 2, pro: 3 };
 const planMessageLimits: Record<string, number> = { guest: 5, basic: 50, advanced: 200, pro: 9999 };
 
 export default function Index() {
-  const { user, profile, loginWithGoogle, logout, incrementUsage, isTrialActive } = useAuth();
+  const { user, profile, loginWithGoogle, logout, incrementUsage, isTrialActive, loggingIn } = useAuth();
+  const { chats, setChats, loadingChats, saveChat, deleteChat: firebaseDeleteChat, addChat } = useFirebaseChats();
 
-  const [chats, setChats] = useState<Chat[]>(dummyChats);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isTyping, setIsTyping] = useState(false);
@@ -43,6 +45,7 @@ export default function Index() {
   const [detectedLanguage, setDetectedLanguage] = useState<{ name: string; flag: string; isBanglish?: boolean } | null>(null);
   const streamingRef = useRef(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
 
   const currentPlan = profile?.plan || "guest";
   const isLoggedIn = !!user;
@@ -54,7 +57,6 @@ export default function Index() {
 
   const activeChat = chats.find((c) => c.id === activeChatId) || null;
 
-  // Convert chat history to API format
   const buildApiMessages = (chatMessages: Message[]): ChatMessage[] => {
     return chatMessages.map((m) => ({
       role: m.role === "user" ? "user" as const : "assistant" as const,
@@ -103,7 +105,7 @@ export default function Index() {
           messages: [userMsg],
           createdAt: new Date(),
         };
-        setChats((prev) => [newChat, ...prev]);
+        addChat(newChat);
         setActiveChatId(newChat.id);
         targetChatId = newChat.id;
       } else {
@@ -114,18 +116,15 @@ export default function Index() {
         );
       }
 
-      // Start streaming AI response
       setIsTyping(true);
       streamingRef.current = true;
 
       const aiMsgId = (Date.now() + 1).toString();
 
-      // Build history for the API
       const currentChat = chats.find(c => c.id === targetChatId);
       const allMessages = currentChat ? [...currentChat.messages, userMsg] : [userMsg];
       const apiMessages = buildApiMessages(allMessages);
 
-      // Create empty AI message that will be filled by streaming
       const emptyAiMsg: Message = {
         id: aiMsgId,
         role: "ai",
@@ -166,7 +165,6 @@ export default function Index() {
           setIsTyping(false);
           streamingRef.current = false;
           toast.error(error);
-          // Update the AI message with error
           setChats((prev) =>
             prev.map((c) => {
               if (c.id !== targetChatId) return c;
@@ -183,7 +181,7 @@ export default function Index() {
         },
       });
     },
-    [activeChatId, uploadedFiles, uploadedImages, selectedLanguage, activeMode, currentPlan, messageCount, chats]
+    [activeChatId, uploadedFiles, uploadedImages, selectedLanguage, activeMode, currentPlan, messageCount, chats, addChat, setChats, incrementUsage]
   );
 
   const handleNewChat = () => {
@@ -192,7 +190,7 @@ export default function Index() {
   };
 
   const handleDeleteChat = (id: string) => {
-    setChats((prev) => prev.filter((c) => c.id !== id));
+    firebaseDeleteChat(id);
     if (activeChatId === id) setActiveChatId(null);
   };
 
@@ -307,6 +305,9 @@ export default function Index() {
         input.click();
         break;
       }
+      case "admin":
+        setShowAdmin(true);
+        break;
     }
   }, [handleSend]);
 
@@ -342,6 +343,9 @@ export default function Index() {
         onUpgrade={() => setShowSubscription(true)}
         isLoggedIn={isLoggedIn}
         onLogin={() => loginWithGoogle()}
+        loggingIn={loggingIn}
+        userName={profile?.name || user?.displayName || undefined}
+        userPhotoURL={profile?.profileImage || user?.photoURL || undefined}
       />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -426,7 +430,9 @@ export default function Index() {
         isOpen={showProfile}
         onClose={() => setShowProfile(false)}
         onUpgrade={() => { setShowProfile(false); setShowSubscription(true); }}
+        onOpenAdmin={() => { setShowProfile(false); setShowAdmin(true); }}
       />
+      <AdminDashboard isOpen={showAdmin} onClose={() => setShowAdmin(false)} />
     </div>
   );
 }
