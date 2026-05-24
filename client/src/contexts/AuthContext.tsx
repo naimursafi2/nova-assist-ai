@@ -27,6 +27,7 @@ interface AuthContextType {
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   incrementUsage: () => Promise<boolean>;
+  updatePlan: (plan: string) => Promise<void>;
   trialDaysRemaining: number;
   isTrialActive: boolean;
   planLimits: { messages: number };
@@ -139,6 +140,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return true;
   };
 
+  const updatePlan = async (plan: string) => {
+    if (!user || !profile) return;
+    await update(ref(db, `users/${user.uid}`), { plan });
+    setProfile({ ...profile, plan });
+  };
+
   const trialEnd = profile ? new Date(profile.trialEndDate) : new Date();
   const now = new Date();
   const trialDaysRemaining = Math.max(0, Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
@@ -154,6 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginWithGoogle,
         logout,
         incrementUsage,
+        updatePlan,
         trialDaysRemaining,
         isTrialActive,
         planLimits: { messages: planMessageLimits[profile?.plan || "guest"] },

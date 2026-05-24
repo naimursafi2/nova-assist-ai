@@ -15,7 +15,7 @@ const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:8080";
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
 const BASIC_FREE_COUPON = process.env.BASIC_FREE_COUPON || "NOVA-BASIC-FREE";
-const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2024-12-18.acacia" }) : null;
+const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2025-02-24.acacia" }) : null;
 
 app.use(cors({ origin: CLIENT_URL, credentials: true }));
 app.use(helmet());
@@ -90,9 +90,9 @@ const BillingHistory = mongoose.model("BillingHistory", billingHistorySchema);
 
 const planMessageLimits: Record<string, number> = { guest: 5, basic: 50, advanced: 200, pro: 9999 };
 const planPrices: Record<string, { name: string; amount: number }> = {
-  basic: { name: "Aura Basic", amount: 900 },
-  advanced: { name: "Aura Advanced", amount: 2900 },
-  pro: { name: "Aura Pro", amount: 9900 },
+  basic: { name: "Nova Assist Basic", amount: 900 },
+  advanced: { name: "Nova Assist Advanced", amount: 1900 },
+  pro: { name: "Nova Assist Pro", amount: 3900 },
 };
 
 function todayKey() {

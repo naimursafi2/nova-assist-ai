@@ -4,13 +4,13 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "build:dev": "vite build --mode development",
+    "dev": "node scripts/dev.mjs",
+    "build": "node scripts/build.mjs",
+    "build:dev": "node scripts/build.mjs --mode development",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "preview": "node scripts/preview.mjs",
+    "test": "vitest run --root .. --environment jsdom --globals client/src/test/example.test.ts",
+    "test:watch": "vitest --root .. --environment jsdom --globals client/src"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

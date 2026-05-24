@@ -14,11 +14,12 @@ interface ModeSwitcherProps {
 
 export default function ModeSwitcher({ activeMode, onSelectMode, compact, currentPlan = "pro", onUpgrade }: ModeSwitcherProps) {
   const userLevel = planLevel[currentPlan] || 0;
+  const visibleModes = aiModes.filter((mode) => ["chat", "writing", "research", "code"].includes(mode.id));
 
   if (compact) {
     return (
       <div className="flex items-center gap-1 overflow-x-auto scrollbar-thin pb-1">
-        {aiModes.map((mode) => {
+        {visibleModes.map((mode) => {
           const locked = planLevel[mode.requiredPlan] > userLevel;
           return (
             <button
@@ -43,8 +44,8 @@ export default function ModeSwitcher({ activeMode, onSelectMode, compact, curren
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-      {aiModes.map((mode, i) => {
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      {visibleModes.map((mode, i) => {
         const locked = planLevel[mode.requiredPlan] > userLevel;
         return (
           <motion.button

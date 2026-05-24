@@ -4,6 +4,7 @@ import { detectLanguage } from "@/lib/languageUtils";
 import { streamChat, ChatMessage } from "@/lib/streamChat";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFirebaseChats } from "@/hooks/useFirebaseChats";
+import { createCheckoutSession } from "@/lib/api";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import ChatHeader from "@/components/chat/ChatHeader";
 import ChatWindow from "@/components/chat/ChatWindow";
@@ -22,7 +23,7 @@ const planLevel: Record<string, number> = { guest: 0, basic: 1, advanced: 2, pro
 const planMessageLimits: Record<string, number> = { guest: 5, basic: 50, advanced: 200, pro: 9999 };
 
 export default function Index() {
-  const { user, profile, loginWithGoogle, logout, incrementUsage, isTrialActive, loggingIn } = useAuth();
+  const { user, profile, loginWithGoogle, logout, incrementUsage, updatePlan, loggingIn } = useAuth();
   const { chats, setChats, loadingChats, saveChat, deleteChat: firebaseDeleteChat, addChat } = useFirebaseChats();
 
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
@@ -41,6 +42,8 @@ export default function Index() {
   const [showPromptLibrary, setShowPromptLibrary] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showSubscription, setShowSubscription] = useState(false);
+  const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [selectedLanguage, setSelectedLanguage] = useState("auto");
   const [detectedLanguage, setDetectedLanguage] = useState<{ name: string; flag: string; isBanglish?: boolean } | null>(null);
   const streamingRef = useRef(false);
@@ -235,6 +238,47 @@ export default function Index() {
     setActiveMode(mode);
   }, [currentPlan]);
 
+  const handleSelectPlan = useCallback(async (plan: string, coupon?: string) => {
+    if (!user) {
+      setCheckoutError("Please sign in before upgrading.");
+      try {
+        await loginWithGoogle();
+      } catch {
+        toast.error("Sign in was cancelled");
+      }
+      return;
+    }
+
+    setCheckoutPlan(plan);
+    setCheckoutError(null);
+
+    try {
+      const checkout = await createCheckoutSession({
+        plan,
+        userId: user.uid,
+        email: user.email || profile?.email,
+        coupon,
+      });
+
+      if (checkout.free) {
+        await updatePlan(plan);
+        toast.success("Plan activated");
+        setShowSubscription(false);
+        return;
+      }
+
+      const redirectUrl = checkout.url || checkout.redirectUrl;
+      if (!redirectUrl) throw new Error("Checkout link was not returned");
+      window.location.assign(redirectUrl);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Payment checkout failed";
+      setCheckoutError(message);
+      toast.error(message);
+    } finally {
+      setCheckoutPlan(null);
+    }
+  }, [loginWithGoogle, profile?.email, updatePlan, user]);
+
   const handleCommandAction = useCallback((action: string, payload?: string) => {
     switch (action) {
       case "open-palette":
@@ -350,7 +394,7 @@ export default function Index() {
 
       <div className="flex-1 flex flex-col min-w-0">
         <div className="px-4 py-2 border-b border-border">
-          <ModeSwitcher activeMode={activeMode} onSelectMode={setActiveMode} compact currentPlan={currentPlan} onUpgrade={() => setShowSubscription(true)} />
+          <ModeSwitcher activeMode={activeMode} onSelectMode={handleSelectMode} compact currentPlan={currentPlan} onUpgrade={() => setShowSubscription(true)} />
         </div>
 
         <ChatHeader
@@ -373,7 +417,7 @@ export default function Index() {
           isTyping={isTyping}
           onPromptClick={handleSend}
           activeMode={activeMode}
-          onSelectMode={setActiveMode}
+          onSelectMode={handleSelectMode}
           onOpenCommandPalette={() => setShowCommandPalette(true)}
           recentChatsCount={chats.length}
           currentPlan={currentPlan}
@@ -424,7 +468,9 @@ export default function Index() {
         isOpen={showSubscription}
         onClose={() => setShowSubscription(false)}
         currentPlan={currentPlan}
-        onSelectPlan={(plan) => { setShowSubscription(false); }}
+        onSelectPlan={handleSelectPlan}
+        loadingPlan={checkoutPlan}
+        errorMessage={checkoutError}
       />
       <ProfilePanel
         isOpen={showProfile}
