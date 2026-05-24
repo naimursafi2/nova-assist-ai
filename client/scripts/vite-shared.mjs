@@ -1,7 +1,13 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 
 export const clientRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const require = createRequire(import.meta.url);
+
+function resolveFromClient(packageName) {
+  return require.resolve(packageName, { paths: [clientRoot] });
+}
 
 export const viteConfig = {
   root: clientRoot,
@@ -21,7 +27,7 @@ export const viteConfig = {
   resolve: {
     alias: {
       "@": path.resolve(clientRoot, "src"),
-      "framer-motion": path.resolve(clientRoot, "node_modules/framer-motion/dist/cjs/index.js"),
+      "framer-motion": resolveFromClient("framer-motion"),
     },
   },
 };
