@@ -17,6 +17,7 @@
     "mongoose": "^8.9.5",
     "morgan": "^1.10.0",
     "openai": "^4.77.0",
+    "stripe": "^17.5.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
