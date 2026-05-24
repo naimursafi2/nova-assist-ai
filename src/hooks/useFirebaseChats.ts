@@ -1,30 +1,55 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { ref, get, set, remove, onValue } from "firebase/database";
-import { db } from "@/lib/firebase";
-import { Chat, Message, dummyChats } from "@/lib/chatData";
+import { Chat, dummyChats } from "@/lib/chatData";
 import { useAuth } from "@/contexts/AuthContext";
 
-// Serialize/deserialize dates for Firebase
-function serializeChat(chat: Chat): any {
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+type MongoChat = Omit<Chat, "id" | "createdAt"> & {
+  _id?: string;
+  id?: string;
+  userId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+function serializeChat(chat: Chat, userId: string): MongoChat {
   return {
     ...chat,
-    createdAt: chat.createdAt instanceof Date ? chat.createdAt.toISOString() : chat.createdAt,
+    userId,
     messages: chat.messages.map((m) => ({
       ...m,
       timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : m.timestamp,
     })),
+    createdAt: chat.createdAt instanceof Date ? chat.createdAt.toISOString() : chat.createdAt,
   };
 }
 
-function deserializeChat(data: any): Chat {
+function deserializeChat(data: MongoChat): Chat {
   return {
     ...data,
-    createdAt: new Date(data.createdAt),
+    id: data._id || data.id || crypto.randomUUID(),
+    createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
     messages: (data.messages || []).map((m: any) => ({
       ...m,
-      timestamp: new Date(m.timestamp),
+      timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
     })),
-  };
+  } as Chat;
+}
+
+async function apiRequest<T>(path: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_URL}${path}`, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(options?.headers || {}),
+    },
+    ...options,
+  });
+
+  if (!response.ok) {
+    throw new Error("সার্ভার থেকে সঠিক উত্তর পাওয়া যায়নি");
+  }
+
+  return response.json();
 }
 
 export function useFirebaseChats() {
@@ -33,10 +58,8 @@ export function useFirebaseChats() {
   const [loadingChats, setLoadingChats] = useState(true);
   const prevUid = useRef<string | null>(null);
 
-  // Load chats when user changes
   useEffect(() => {
     if (!user) {
-      // Guest mode: use dummy chats
       setChats(dummyChats);
       setLoadingChats(false);
       prevUid.current = null;
@@ -47,29 +70,25 @@ export function useFirebaseChats() {
     prevUid.current = user.uid;
 
     setLoadingChats(true);
-    const chatsRef = ref(db, `users/${user.uid}/chats`);
-    get(chatsRef).then((snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        const chatList = Object.values(data).map((c: any) => deserializeChat(c));
-        chatList.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-        setChats(chatList);
-      } else {
+    apiRequest<MongoChat[]>(`/api/chats/${user.uid}`)
+      .then((data) => {
+        setChats(data.map(deserializeChat));
+      })
+      .catch(() => {
         setChats([]);
-      }
-      setLoadingChats(false);
-    }).catch(() => {
-      setChats([]);
-      setLoadingChats(false);
-    });
+      })
+      .finally(() => {
+        setLoadingChats(false);
+      });
   }, [user]);
 
-  // Save a single chat to Firebase
   const saveChat = useCallback(
-    (chat: Chat) => {
+    async (chat: Chat) => {
       if (!user) return;
-      const chatRef = ref(db, `users/${user.uid}/chats/${chat.id}`);
-      set(chatRef, serializeChat(chat));
+      await apiRequest(`/api/chats/${chat.id}`, {
+        method: "PUT",
+        body: JSON.stringify(serializeChat(chat, user.uid)),
+      });
     },
     [user]
   );
@@ -78,16 +97,19 @@ export function useFirebaseChats() {
     (updater: (prev: Chat[]) => Chat[]) => {
       setChats((prev) => {
         const next = updater(prev);
-        // Find changed chats and save them
+
         if (user) {
           next.forEach((chat) => {
             const old = prev.find((c) => c.id === chat.id);
             if (!old || old !== chat) {
-              const chatRef = ref(db, `users/${user.uid}/chats/${chat.id}`);
-              set(chatRef, serializeChat(chat));
+              apiRequest(`/api/chats/${chat.id}`, {
+                method: "PUT",
+                body: JSON.stringify(serializeChat(chat, user.uid)),
+              }).catch(() => undefined);
             }
           });
         }
+
         return next;
       });
     },
@@ -98,7 +120,7 @@ export function useFirebaseChats() {
     (id: string) => {
       setChats((prev) => prev.filter((c) => c.id !== id));
       if (user) {
-        remove(ref(db, `users/${user.uid}/chats/${id}`));
+        apiRequest(`/api/chats/${id}`, { method: "DELETE" }).catch(() => undefined);
       }
     },
     [user]
@@ -108,7 +130,16 @@ export function useFirebaseChats() {
     (chat: Chat) => {
       setChats((prev) => [chat, ...prev]);
       if (user) {
-        set(ref(db, `users/${user.uid}/chats/${chat.id}`), serializeChat(chat));
+        apiRequest<MongoChat>("/api/chats", {
+          method: "POST",
+          body: JSON.stringify(serializeChat(chat, user.uid)),
+        })
+          .then((savedChat) => {
+            setChats((prev) =>
+              prev.map((c) => (c.id === chat.id ? deserializeChat(savedChat) : c))
+            );
+          })
+          .catch(() => undefined);
       }
     },
     [user]
