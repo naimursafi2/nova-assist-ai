@@ -13,30 +13,22 @@ const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || "";
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:8080";
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
 const BASIC_FREE_COUPON = process.env.BASIC_FREE_COUPON || "NOVA-BASIC-FREE";
 const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2024-12-18.acacia" }) : null;
 
 app.use(cors({ origin: CLIENT_URL, credentials: true }));
 app.use(helmet());
+app.use("/api/payments/webhook", express.raw({ type: "application/json" }));
 app.use(express.json({ limit: "10mb" }));
 app.use(morgan("dev"));
 
 const messageSchema = new mongoose.Schema(
   {
     id: String,
-    role: {
-      type: String,
-      enum: ["user", "ai", "assistant", "system"],
-      required: true,
-    },
-    content: {
-      type: String,
-      default: "",
-    },
-    timestamp: {
-      type: Date,
-      default: Date.now,
-    },
+    role: { type: String, enum: ["user", "ai", "assistant", "system"], required: true },
+    content: { type: String, default: "" },
+    timestamp: { type: Date, default: Date.now },
     files: Array,
     images: Array,
     sources: Array,
@@ -46,58 +38,27 @@ const messageSchema = new mongoose.Schema(
 
 const chatSchema = new mongoose.Schema(
   {
-    title: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    userId: {
-      type: String,
-      required: true,
-      index: true,
-    },
-    folder: {
-      type: String,
-      default: "All",
-    },
-    pinned: {
-      type: Boolean,
-      default: false,
-    },
-    starred: {
-      type: Boolean,
-      default: false,
-    },
+    title: { type: String, required: true, trim: true },
+    userId: { type: String, required: true, index: true },
+    folder: { type: String, default: "All" },
+    pinned: { type: Boolean, default: false },
+    starred: { type: Boolean, default: false },
     messages: [messageSchema],
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
 const userSchema = new mongoose.Schema(
   {
-    userId: {
-      type: String,
-      required: true,
-      unique: true,
-      index: true,
-    },
+    userId: { type: String, required: true, unique: true, index: true },
     name: { type: String, default: "User" },
     email: { type: String, default: "" },
     profileImage: { type: String, default: "" },
-    plan: {
-      type: String,
-      enum: ["guest", "basic", "advanced", "pro"],
-      default: "basic",
-    },
-    role: {
-      type: String,
-      enum: ["user", "admin"],
-      default: "user",
-    },
+    plan: { type: String, enum: ["guest", "basic", "advanced", "pro"], default: "basic" },
+    role: { type: String, enum: ["user", "admin"], default: "user" },
     stripeCustomerId: String,
     stripeSubscriptionId: String,
+    subscriptionStatus: { type: String, default: "inactive" },
     trialStartDate: Date,
     trialEndDate: Date,
     dailyUsage: { type: Number, default: 0 },
@@ -108,16 +69,26 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+const billingHistorySchema = new mongoose.Schema(
+  {
+    userId: { type: String, index: true },
+    email: String,
+    plan: String,
+    amount: Number,
+    currency: { type: String, default: "usd" },
+    status: String,
+    stripeSessionId: String,
+    stripeSubscriptionId: String,
+    stripeCustomerId: String,
+  },
+  { timestamps: true }
+);
+
 const Chat = mongoose.model("Chat", chatSchema);
 const AppUser = mongoose.model("AppUser", userSchema);
+const BillingHistory = mongoose.model("BillingHistory", billingHistorySchema);
 
-const planMessageLimits: Record<string, number> = {
-  guest: 5,
-  basic: 50,
-  advanced: 200,
-  pro: 9999,
-};
-
+const planMessageLimits: Record<string, number> = { guest: 5, basic: 50, advanced: 200, pro: 9999 };
 const planPrices: Record<string, { name: string; amount: number }> = {
   basic: { name: "Aura Basic", amount: 900 },
   advanced: { name: "Aura Advanced", amount: 2900 },
@@ -142,11 +113,9 @@ app.post("/api/users/sync", async (req, res) => {
   try {
     const { userId, name, email, profileImage } = req.body;
     if (!userId) return res.status(400).json({ success: false, message: "userId প্রয়োজন" });
-
     const now = new Date();
     const resetKey = todayKey();
     let user = await AppUser.findOne({ userId });
-
     if (!user) {
       user = await AppUser.create({
         userId,
@@ -162,19 +131,13 @@ app.post("/api/users/sync", async (req, res) => {
         lastLoginAt: now,
       });
     } else {
-      const updates: Record<string, unknown> = {
-        name: name || user.name,
-        email: email || user.email,
-        profileImage: profileImage || user.profileImage,
-        lastLoginAt: now,
-      };
+      const updates: Record<string, unknown> = { name: name || user.name, email: email || user.email, profileImage: profileImage || user.profileImage, lastLoginAt: now };
       if (user.lastUsageReset !== resetKey) {
         updates.dailyUsage = 0;
         updates.lastUsageReset = resetKey;
       }
       user = await AppUser.findOneAndUpdate({ userId }, updates, { new: true });
     }
-
     res.json(user);
   } catch {
     res.status(500).json({ success: false, message: "ইউজার sync করা যায়নি" });
@@ -195,12 +158,8 @@ app.post("/api/users/:userId/usage", async (req, res) => {
   try {
     const user = await AppUser.findOne({ userId: req.params.userId });
     if (!user) return res.status(404).json({ success: false, message: "ইউজার পাওয়া যায়নি" });
-
     const limit = planMessageLimits[user.plan] || planMessageLimits.guest;
-    if (user.dailyUsage >= limit) {
-      return res.status(429).json({ success: false, message: "আজকের ব্যবহার সীমা শেষ" });
-    }
-
+    if (user.dailyUsage >= limit) return res.status(429).json({ success: false, message: "আজকের ব্যবহার সীমা শেষ" });
     user.dailyUsage += 1;
     user.messageCount += 1;
     await user.save();
@@ -214,7 +173,6 @@ app.patch("/api/users/:userId/plan", async (req, res) => {
   try {
     const { plan } = req.body;
     if (!planMessageLimits[plan]) return res.status(400).json({ success: false, message: "ভুল plan" });
-
     const user = await AppUser.findOneAndUpdate({ userId: req.params.userId }, { plan }, { new: true });
     res.json(user);
   } catch {
@@ -226,18 +184,10 @@ app.post("/api/payments/apply-basic-coupon", async (req, res) => {
   try {
     const { userId, coupon } = req.body;
     if (!userId || !coupon) return res.status(400).json({ success: false, message: "userId এবং coupon প্রয়োজন" });
-
-    if (coupon.trim().toUpperCase() !== BASIC_FREE_COUPON.toUpperCase()) {
-      return res.status(400).json({ success: false, message: "ভুল coupon code" });
-    }
-
-    const user = await AppUser.findOneAndUpdate(
-      { userId },
-      { plan: "basic", dailyUsage: 0 },
-      { new: true, upsert: false }
-    );
-
+    if (coupon.trim().toUpperCase() !== BASIC_FREE_COUPON.toUpperCase()) return res.status(400).json({ success: false, message: "ভুল coupon code" });
+    const user = await AppUser.findOneAndUpdate({ userId }, { plan: "basic", dailyUsage: 0, subscriptionStatus: "free_coupon" }, { new: true });
     if (!user) return res.status(404).json({ success: false, message: "ইউজার পাওয়া যায়নি" });
+    await BillingHistory.create({ userId, email: user.email, plan: "basic", amount: 0, status: "free_coupon" });
     res.json({ success: true, message: "Basic plan free activated", user });
   } catch {
     res.status(500).json({ success: false, message: "coupon apply করা যায়নি" });
@@ -248,42 +198,73 @@ app.post("/api/payments/create-checkout-session", async (req, res) => {
   try {
     const { plan, userId, email, coupon } = req.body;
     if (!planPrices[plan]) return res.status(400).json({ success: false, message: "ভুল plan" });
-
     if (plan === "basic" && coupon?.trim().toUpperCase() === BASIC_FREE_COUPON.toUpperCase()) {
-      const user = await AppUser.findOneAndUpdate(
-        { userId },
-        { plan: "basic", dailyUsage: 0 },
-        { new: true }
-      );
-      return res.json({ success: true, free: true, user, redirectUrl: `${CLIENT_URL}/payment-success?plan=basic` });
+      const user = await AppUser.findOneAndUpdate({ userId }, { plan: "basic", dailyUsage: 0, subscriptionStatus: "free_coupon" }, { new: true });
+      if (user) await BillingHistory.create({ userId, email: user.email, plan: "basic", amount: 0, status: "free_coupon" });
+      return res.json({ success: true, free: true, user, redirectUrl: `${CLIENT_URL}/payment-success?plan=basic&userId=${userId || ""}` });
     }
-
     if (!stripe) return res.status(500).json({ success: false, message: "Stripe key সেট করা হয়নি" });
-
     const selectedPlan = planPrices[plan];
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer_email: email,
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            product_data: { name: selectedPlan.name },
-            recurring: { interval: "month" },
-            unit_amount: selectedPlan.amount,
-          },
-          quantity: 1,
-        },
-      ],
+      line_items: [{ price_data: { currency: "usd", product_data: { name: selectedPlan.name }, recurring: { interval: "month" }, unit_amount: selectedPlan.amount }, quantity: 1 }],
       metadata: { userId: userId || "", plan },
-      success_url: `${CLIENT_URL}/payment-success?plan=${plan}`,
+      success_url: `${CLIENT_URL}/payment-success?plan=${plan}&userId=${userId || ""}`,
       cancel_url: `${CLIENT_URL}/pricing?cancelled=true`,
       allow_promotion_codes: true,
     });
-
     res.json({ success: true, url: session.url });
   } catch {
     res.status(500).json({ success: false, message: "checkout তৈরি করা যায়নি" });
+  }
+});
+
+app.get("/api/payments/billing-history/:userId", async (req, res) => {
+  try {
+    const history = await BillingHistory.find({ userId: req.params.userId }).sort({ createdAt: -1 });
+    res.json(history);
+  } catch {
+    res.status(500).json({ success: false, message: "billing history পাওয়া যায়নি" });
+  }
+});
+
+app.post("/api/payments/cancel-subscription", async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const user = await AppUser.findOne({ userId });
+    if (!user) return res.status(404).json({ success: false, message: "ইউজার পাওয়া যায়নি" });
+    if (stripe && user.stripeSubscriptionId) await stripe.subscriptions.cancel(user.stripeSubscriptionId);
+    user.plan = "basic";
+    user.subscriptionStatus = "cancelled";
+    user.stripeSubscriptionId = undefined;
+    await user.save();
+    await BillingHistory.create({ userId, email: user.email, plan: "basic", amount: 0, status: "cancelled" });
+    res.json({ success: true, user });
+  } catch {
+    res.status(500).json({ success: false, message: "subscription cancel করা যায়নি" });
+  }
+});
+
+app.post("/api/payments/webhook", async (req, res) => {
+  if (!stripe || !STRIPE_WEBHOOK_SECRET) return res.status(400).send("Stripe webhook not configured");
+  const signature = req.headers["stripe-signature"];
+  try {
+    const event = stripe.webhooks.constructEvent(req.body, signature as string, STRIPE_WEBHOOK_SECRET);
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const userId = session.metadata?.userId || "";
+      const plan = session.metadata?.plan || "basic";
+      await AppUser.findOneAndUpdate(
+        { userId },
+        { plan, subscriptionStatus: "active", stripeCustomerId: String(session.customer || ""), stripeSubscriptionId: String(session.subscription || "") },
+        { new: true }
+      );
+      await BillingHistory.create({ userId, email: session.customer_email || "", plan, amount: session.amount_total || 0, status: "paid", stripeSessionId: session.id, stripeCustomerId: String(session.customer || ""), stripeSubscriptionId: String(session.subscription || "") });
+    }
+    res.json({ received: true });
+  } catch (error) {
+    res.status(400).send("Webhook verification failed");
   }
 });
 
@@ -324,9 +305,7 @@ app.delete("/api/chats/:id", async (req, res) => {
   }
 });
 
-app.use((_, res) => {
-  res.status(404).json({ success: false, message: "API route পাওয়া যায়নি" });
-});
+app.use((_, res) => res.status(404).json({ success: false, message: "API route পাওয়া যায়নি" }));
 
 async function startServer() {
   try {
