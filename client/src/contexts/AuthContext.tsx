@@ -89,6 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(localProfile));
     setUser(localUser);
     setProfile(localProfile);
+    return { user: localUser, profile: localProfile };
   };
 
   const loadOrCreateProfile = async (fbUser: FirebaseUser) => {
@@ -98,7 +99,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (snapshot.exists()) {
       const data = snapshot.val() as UserProfile;
-      // Reset daily usage if needed
       const today = now.toISOString().split("T")[0];
       const updates: Partial<UserProfile> = { lastLoginAt: now.toISOString() };
       if (data.lastUsageReset !== today) {
@@ -132,8 +132,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
-      setUser(fbUser);
       if (fbUser) {
+        setUser(fbUser);
         await loadOrCreateProfile(fbUser).catch(() => {
           createLocalProfile(fbUser.displayName || "Local User");
         });
@@ -144,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(JSON.parse(localUser));
           setProfile(JSON.parse(localProfile));
         } else {
-          setProfile(null);
+          createLocalProfile();
         }
       }
       setLoading(false);
@@ -167,40 +167,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(LOCAL_USER_KEY);
     localStorage.removeItem(LOCAL_PROFILE_KEY);
     await signOut(auth).catch(() => undefined);
-    setUser(null);
-    setProfile(null);
+    createLocalProfile();
   };
 
   const incrementUsage = async (): Promise<boolean> => {
-    if (!user || !profile) return true;
-    const limit = planMessageLimits[profile.plan] || 5;
-    if (profile.dailyUsage >= limit) return false;
+    const currentUser = user || createLocalProfile().user;
+    const currentProfile = profile || createLocalProfile().profile;
+    const limit = planMessageLimits[currentProfile.plan] || 5;
+    if (currentProfile.dailyUsage >= limit) return false;
 
     const updated = {
-      ...profile,
-      dailyUsage: profile.dailyUsage + 1,
-      messageCount: profile.messageCount + 1,
+      ...currentProfile,
+      dailyUsage: currentProfile.dailyUsage + 1,
+      messageCount: currentProfile.messageCount + 1,
     };
-    if (user.isLocal) {
+    if (currentUser.isLocal) {
       localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(updated));
     } else {
-      await update(ref(db, `users/${user.uid}`), {
+      await update(ref(db, `users/${currentUser.uid}`), {
         dailyUsage: updated.dailyUsage,
         messageCount: updated.messageCount,
-      });
+      }).catch(() => undefined);
     }
     setProfile(updated);
+    setUser(currentUser);
     return true;
   };
 
   const updatePlan = async (plan: string) => {
-    if (!user || !profile) return;
-    const updated = { ...profile, plan };
-    if (user.isLocal) {
+    const currentUser = user || createLocalProfile().user;
+    const currentProfile = profile || createLocalProfile().profile;
+    const updated = { ...currentProfile, plan };
+    if (currentUser.isLocal) {
       localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(updated));
     } else {
-      await update(ref(db, `users/${user.uid}`), { plan });
+      await update(ref(db, `users/${currentUser.uid}`), { plan }).catch(() => undefined);
     }
+    setUser(currentUser);
     setProfile(updated);
   };
 
