@@ -1,0 +1,20 @@
+{
+  "files.exclude": {
+    "**/.git": true,
+    ".vscode": true,
+    ".npm-cache": true,
+    "node_modules": true,
+    "api": true,
+    "src": true,
+    "supabase": true,
+    ".codex-client-dev.err.log": true,
+    ".codex-client-dev.out.log": true,
+    ".env": true,
+    ".gitignore": true,
+    "bun.lockb": true,
+    "package-lock.json": true,
+    "package.json": true,
+    "README.md": true,
+    "vercel.json": true
+  }
+}

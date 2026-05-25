@@ -105,8 +105,32 @@ function createTrialEndDate() {
   return date;
 }
 
+function localChatAnswer(message: string, mode = "chat") {
+  const text = message.trim();
+  const lower = text.toLowerCase();
+  if (!text) return "Ask me anything and I will help.";
+  if (/^(hi|hello|hey|hii|salam|assalamu)/i.test(lower)) {
+    return "Hi! I am Nova Assist AI. I can help with chat, writing, research, and code. What do you want to work on?";
+  }
+  if (/(login|sign in|auth)/i.test(lower)) {
+    return "This app now supports local sign-in without Firebase keys. Google login can still work later if Firebase is configured.";
+  }
+  if (/(code|react|javascript|typescript|node|express|api|error|fix)/i.test(lower)) {
+    return `I can help with this in ${mode} mode.\n\nShare the code/error and what you expected. Then I can explain the issue and suggest a fix.`;
+  }
+  return `I understand: "${text}"\n\nKeyless mode is active, so I can give helpful offline guidance. For live AI-quality answers, connect OPENAI_API_KEY or GEMINI_API_KEY later.`;
+}
+
 app.get("/api/health", (_, res) => {
   res.json({ success: true, message: "Nova Assist AI backend running" });
+});
+
+app.post("/api/chat", async (req, res) => {
+  const { messages, mode } = req.body || {};
+  const lastUserMessage = Array.isArray(messages)
+    ? [...messages].reverse().find((message) => message?.role === "user")?.content || ""
+    : "";
+  res.json({ success: true, content: localChatAnswer(lastUserMessage, mode) });
 });
 
 app.post("/api/users/sync", async (req, res) => {
@@ -309,9 +333,12 @@ app.use((_, res) => res.status(404).json({ success: false, message: "API route �
 
 async function startServer() {
   try {
-    if (!MONGO_URI) throw new Error("MONGO_URI পাওয়া যায়নি");
-    await mongoose.connect(MONGO_URI);
-    console.log("MongoDB connected successfully");
+    if (MONGO_URI) {
+      await mongoose.connect(MONGO_URI);
+      console.log("MongoDB connected successfully");
+    } else {
+      console.warn("MONGO_URI is not configured. /api/chat works, database routes need MongoDB.");
+    }
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   } catch (error) {
     console.error(error);

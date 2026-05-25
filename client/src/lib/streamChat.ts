@@ -1,8 +1,41 @@
+import { detectLanguage } from "./languageUtils";
+import { generateSmartResponse } from "./responseEngine";
+import { Message } from "./chatData";
+
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-const CHAT_URL = SUPABASE_URL && SUPABASE_KEY ? `${SUPABASE_URL}/functions/v1/chat` : "/api/chat";
+const CHAT_URL = SUPABASE_URL && SUPABASE_KEY ? `${SUPABASE_URL}/functions/v1/chat` : import.meta.env.VITE_CHAT_API_URL;
+const USE_REMOTE_AI = import.meta.env.VITE_USE_REMOTE_AI === "true" && CHAT_URL;
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
+
+function localResponse(messages: ChatMessage[], mode?: string) {
+  const lastUserMessage = [...messages].reverse().find((message) => message.role === "user")?.content || "";
+  const detected = detectLanguage(lastUserMessage);
+  const history: Message[] = messages.map((message, index) => ({
+    id: String(index),
+    role: message.role === "user" ? "user" : "ai",
+    content: message.content,
+    timestamp: new Date(),
+  }));
+
+  return generateSmartResponse({
+    userMessage: lastUserMessage,
+    conversationHistory: history,
+    activeMode: mode || "chat",
+    language: detected.code,
+    isBanglish: !!detected.isBanglish,
+    hasImages: false,
+    hasFiles: false,
+  }).replaceAll("Aura AI", "Nova Assist AI");
+}
+
+function finishWithLocalResponse(messages: ChatMessage[], mode: string | undefined, onDelta: (text: string) => void, onDone: () => void) {
+  window.setTimeout(() => {
+    onDelta(localResponse(messages, mode));
+    onDone();
+  }, 250);
+}
 
 export async function streamChat({
   messages,
@@ -17,6 +50,11 @@ export async function streamChat({
   onDone: () => void;
   onError: (error: string) => void;
 }) {
+  if (!USE_REMOTE_AI) {
+    finishWithLocalResponse(messages, mode, onDelta, onDone);
+    return;
+  }
+
   try {
     const resp = await fetch(CHAT_URL, {
       method: "POST",
@@ -28,8 +66,7 @@ export async function streamChat({
     });
 
     if (!resp.ok) {
-      const data = await resp.json().catch(() => ({ error: "Request failed" }));
-      onError(data.error || `Error ${resp.status}`);
+      finishWithLocalResponse(messages, mode, onDelta, onDone);
       return;
     }
 
@@ -109,6 +146,6 @@ export async function streamChat({
     onDone();
   } catch (e) {
     console.error("Stream error:", e);
-    onError(e instanceof Error ? e.message : "Connection failed");
+    finishWithLocalResponse(messages, mode, onDelta, onDone);
   }
 }

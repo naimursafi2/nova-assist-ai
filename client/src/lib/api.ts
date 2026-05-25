@@ -1,4 +1,4 @@
-export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+export const API_URL = import.meta.env.VITE_API_URL || "";
 
 export async function apiRequest<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
@@ -32,6 +32,14 @@ export function createCheckoutSession(payload: {
   email?: string | null;
   coupon?: string;
 }) {
+  if (!API_URL) {
+    return Promise.resolve({
+      success: true,
+      free: true,
+      message: "Demo plan activated locally. Connect Stripe in the server to accept real payments.",
+    });
+  }
+
   return apiRequest<CheckoutResponse>("/api/payments/create-checkout-session", {
     method: "POST",
     body: JSON.stringify(payload),

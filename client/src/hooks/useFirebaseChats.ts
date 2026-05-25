@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Chat, dummyChats } from "@/lib/chatData";
 import { useAuth } from "@/contexts/AuthContext";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API_URL = import.meta.env.VITE_API_URL || "";
+const LOCAL_CHATS_KEY = "nova-local-chats";
 
 type MongoChat = Omit<Chat, "id" | "createdAt"> & {
   _id?: string;
@@ -59,10 +60,27 @@ export function useFirebaseChats() {
   const prevUid = useRef<string | null>(null);
 
   useEffect(() => {
+    const loadLocalChats = () => {
+      const stored = localStorage.getItem(LOCAL_CHATS_KEY);
+      if (!stored) return dummyChats;
+      try {
+        return (JSON.parse(stored) as MongoChat[]).map(deserializeChat);
+      } catch {
+        return dummyChats;
+      }
+    };
+
     if (!user) {
-      setChats(dummyChats);
+      setChats(loadLocalChats());
       setLoadingChats(false);
       prevUid.current = null;
+      return;
+    }
+
+    if (!API_URL || user.isLocal) {
+      setChats(loadLocalChats());
+      setLoadingChats(false);
+      prevUid.current = user.uid;
       return;
     }
 
@@ -85,6 +103,14 @@ export function useFirebaseChats() {
   const saveChat = useCallback(
     async (chat: Chat) => {
       if (!user) return;
+      if (!API_URL || user.isLocal) {
+        setChats((prev) => {
+          const next = prev.map((item) => (item.id === chat.id ? chat : item));
+          localStorage.setItem(LOCAL_CHATS_KEY, JSON.stringify(next.map((item) => serializeChat(item, user.uid))));
+          return next;
+        });
+        return;
+      }
       await apiRequest(`/api/chats/${chat.id}`, {
         method: "PUT",
         body: JSON.stringify(serializeChat(chat, user.uid)),
@@ -98,7 +124,9 @@ export function useFirebaseChats() {
       setChats((prev) => {
         const next = updater(prev);
 
-        if (user) {
+        if (!API_URL || user?.isLocal) {
+          localStorage.setItem(LOCAL_CHATS_KEY, JSON.stringify(next.map((chat) => serializeChat(chat, user?.uid || "local-user"))));
+        } else if (user) {
           next.forEach((chat) => {
             const old = prev.find((c) => c.id === chat.id);
             if (!old || old !== chat) {
@@ -118,8 +146,14 @@ export function useFirebaseChats() {
 
   const deleteChat = useCallback(
     (id: string) => {
-      setChats((prev) => prev.filter((c) => c.id !== id));
-      if (user) {
+      setChats((prev) => {
+        const next = prev.filter((c) => c.id !== id);
+        if (!API_URL || user?.isLocal) {
+          localStorage.setItem(LOCAL_CHATS_KEY, JSON.stringify(next.map((chat) => serializeChat(chat, user?.uid || "local-user"))));
+        }
+        return next;
+      });
+      if (API_URL && user && !user.isLocal) {
         apiRequest(`/api/chats/${id}`, { method: "DELETE" }).catch(() => undefined);
       }
     },
@@ -128,8 +162,14 @@ export function useFirebaseChats() {
 
   const addChat = useCallback(
     (chat: Chat) => {
-      setChats((prev) => [chat, ...prev]);
-      if (user) {
+      setChats((prev) => {
+        const next = [chat, ...prev];
+        if (!API_URL || user?.isLocal) {
+          localStorage.setItem(LOCAL_CHATS_KEY, JSON.stringify(next.map((item) => serializeChat(item, user?.uid || "local-user"))));
+        }
+        return next;
+      });
+      if (API_URL && user && !user.isLocal) {
         apiRequest<MongoChat>("/api/chats", {
           method: "POST",
           body: JSON.stringify(serializeChat(chat, user.uid)),

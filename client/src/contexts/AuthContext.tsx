@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { onAuthStateChanged, signInWithPopup, signOut, User } from "firebase/auth";
+import { onAuthStateChanged, signInWithPopup, signOut, User as FirebaseUser } from "firebase/auth";
 import { ref, get, set, update } from "firebase/database";
 import { auth, db, googleProvider } from "@/lib/firebase";
 
@@ -20,7 +20,7 @@ export interface UserProfile {
 }
 
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
   profile: UserProfile | null;
   loading: boolean;
   loggingIn: boolean;
@@ -41,6 +41,9 @@ const planMessageLimits: Record<string, number> = {
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
+type AuthUser = Pick<FirebaseUser, "uid" | "displayName" | "email" | "photoURL"> & { isLocal?: boolean };
+const LOCAL_USER_KEY = "nova-local-user";
+const LOCAL_PROFILE_KEY = "nova-local-profile";
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
@@ -49,12 +52,46 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [loggingIn, setLoggingIn] = useState(false);
 
-  const loadOrCreateProfile = async (fbUser: User) => {
+  const createLocalProfile = (name = "Local User") => {
+    const now = new Date();
+    const trialEnd = new Date(now);
+    trialEnd.setDate(trialEnd.getDate() + 30);
+    const localUser: AuthUser = {
+      uid: "local-user",
+      displayName: name,
+      email: "local@nova.app",
+      photoURL: "",
+      isLocal: true,
+    };
+    const storedProfile = localStorage.getItem(LOCAL_PROFILE_KEY);
+    const localProfile: UserProfile = storedProfile
+      ? JSON.parse(storedProfile)
+      : {
+          userId: localUser.uid,
+          name,
+          email: localUser.email || "",
+          profileImage: "",
+          plan: "basic",
+          trialStartDate: now.toISOString(),
+          trialEndDate: trialEnd.toISOString(),
+          dailyUsage: 0,
+          messageCount: 0,
+          lastUsageReset: now.toISOString().split("T")[0],
+          createdAt: now.toISOString(),
+          lastLoginAt: now.toISOString(),
+        };
+    localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(localUser));
+    localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(localProfile));
+    setUser(localUser);
+    setProfile(localProfile);
+  };
+
+  const loadOrCreateProfile = async (fbUser: FirebaseUser) => {
     const userRef = ref(db, `users/${fbUser.uid}`);
     const snapshot = await get(userRef);
     const now = new Date();
@@ -97,9 +134,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
       setUser(fbUser);
       if (fbUser) {
-        await loadOrCreateProfile(fbUser);
+        await loadOrCreateProfile(fbUser).catch(() => {
+          createLocalProfile(fbUser.displayName || "Local User");
+        });
       } else {
-        setProfile(null);
+        const localUser = localStorage.getItem(LOCAL_USER_KEY);
+        const localProfile = localStorage.getItem(LOCAL_PROFILE_KEY);
+        if (localUser && localProfile) {
+          setUser(JSON.parse(localUser));
+          setProfile(JSON.parse(localProfile));
+        } else {
+          setProfile(null);
+        }
       }
       setLoading(false);
       setLoggingIn(false);
@@ -112,13 +158,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (err) {
+      createLocalProfile();
       setLoggingIn(false);
-      throw err;
     }
   };
 
   const logout = async () => {
-    await signOut(auth);
+    localStorage.removeItem(LOCAL_USER_KEY);
+    localStorage.removeItem(LOCAL_PROFILE_KEY);
+    await signOut(auth).catch(() => undefined);
+    setUser(null);
     setProfile(null);
   };
 
@@ -132,18 +181,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       dailyUsage: profile.dailyUsage + 1,
       messageCount: profile.messageCount + 1,
     };
-    await update(ref(db, `users/${user.uid}`), {
-      dailyUsage: updated.dailyUsage,
-      messageCount: updated.messageCount,
-    });
+    if (user.isLocal) {
+      localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(updated));
+    } else {
+      await update(ref(db, `users/${user.uid}`), {
+        dailyUsage: updated.dailyUsage,
+        messageCount: updated.messageCount,
+      });
+    }
     setProfile(updated);
     return true;
   };
 
   const updatePlan = async (plan: string) => {
     if (!user || !profile) return;
-    await update(ref(db, `users/${user.uid}`), { plan });
-    setProfile({ ...profile, plan });
+    const updated = { ...profile, plan };
+    if (user.isLocal) {
+      localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(updated));
+    } else {
+      await update(ref(db, `users/${user.uid}`), { plan });
+    }
+    setProfile(updated);
   };
 
   const trialEnd = profile ? new Date(profile.trialEndDate) : new Date();
