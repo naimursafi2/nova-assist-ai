@@ -1,4 +1,6 @@
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const CHAT_URL = SUPABASE_URL && SUPABASE_KEY ? `${SUPABASE_URL}/functions/v1/chat` : "/api/chat";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -20,7 +22,7 @@ export async function streamChat({
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        ...(SUPABASE_KEY ? { Authorization: `Bearer ${SUPABASE_KEY}` } : {}),
       },
       body: JSON.stringify({ messages, mode }),
     });
@@ -33,6 +35,19 @@ export async function streamChat({
 
     if (!resp.body) {
       onError("No response body");
+      return;
+    }
+
+    const contentType = resp.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const data = await resp.json();
+      const content = data.content || data.message || "";
+      if (!content) {
+        onError(data.error || "Empty AI response");
+        return;
+      }
+      onDelta(content);
+      onDone();
       return;
     }
 
