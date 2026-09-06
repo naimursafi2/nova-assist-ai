@@ -15,7 +15,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI || "";
+const MONGODB_URI = process.env.MONGODB_URI || "";
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:8080";
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
@@ -556,7 +556,7 @@ app.use((_req, res) => res.status(404).json({ success: false, message: "API rout
 
 async function startServer() {
   try {
-    await connectDatabase(MONGO_URI);
+    await connectDatabase(MONGODB_URI);
     if (!isFirebaseAdminConfigured()) {
       console.warn(
         "\n[nova-assist-ai] FIREBASE_SERVICE_ACCOUNT_JSON is not set.\n" +

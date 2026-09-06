@@ -27,7 +27,7 @@ Required in `server/.env`:
 
 | Variable | Notes |
 |---|---|
-| `MONGO_URI` | MongoDB Atlas (or local) connection string. If left empty, the server auto-starts an **ephemeral in-memory MongoDB** for convenience — data is lost on restart. Required in production. |
+| `MONGODB_URI` | MongoDB Atlas (or local) connection string. If left empty, the server auto-starts an **ephemeral in-memory MongoDB** for convenience — data is lost on restart. Required in production. |
 | `AI_PROVIDER` | `gemini` (has a free tier) or `openai`. |
 | `GEMINI_API_KEY` | From https://aistudio.google.com/apikey |
 | `OPENAI_API_KEY` | From https://platform.openai.com/api-keys (only needed if `AI_PROVIDER=openai`) |
@@ -67,7 +67,7 @@ A ready-to-use Blueprint lives at the repo root: [`render.yaml`](./render.yaml).
 - Start command: `npm start`
 - Health check: `GET /api/health`
 
-You'll be prompted to fill in the secret environment variables during Blueprint setup (never committed to the repo): `CLIENT_URL` (your Vercel URL), `MONGO_URI`, `GEMINI_API_KEY`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
+You'll be prompted to fill in the secret environment variables during Blueprint setup (never committed to the repo): `CLIENT_URL` (your Vercel URL), `MONGODB_URI`, `GEMINI_API_KEY`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
 
 After both are live, make sure:
 - Render's `CLIENT_URL` matches the exact Vercel production URL (for CORS).
@@ -83,7 +83,7 @@ cd server && npm run build              # tsc type-check/build
 
 ## Known limitations / external configuration required
 
-- **MongoDB**: without a real `MONGO_URI`, the backend refuses to start in production (`NODE_ENV=production`) rather than silently running on ephemeral data.
+- **MongoDB**: without a real `MONGODB_URI`, the backend refuses to start in production (`NODE_ENV=production`) rather than silently running on ephemeral data.
 - **Firebase Admin**: without `FIREBASE_SERVICE_ACCOUNT_JSON`, every route that needs to know "who is this user" fails closed with a `500` and a clear message — it never falls back to trusting a client-supplied user ID.
 - **AI provider**: without `GEMINI_API_KEY` (or `OPENAI_API_KEY` if `AI_PROVIDER=openai`), `/api/chat` returns `503 NO_PROVIDER` instead of a canned reply.
 - **Stripe**: checkout and the free-coupon path work without Stripe configured (coupon path), but real subscriptions require test-mode keys and a webhook pointed at the deployed backend.

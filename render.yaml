@@ -13,7 +13,7 @@ services:
         value: 22.11.0
       - key: CLIENT_URL
         sync: false
-      - key: MONGO_URI
+      - key: MONGODB_URI
         sync: false
       - key: AI_PROVIDER
         value: gemini
