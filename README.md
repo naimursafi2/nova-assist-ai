@@ -67,7 +67,7 @@ A ready-to-use Blueprint lives at the repo root: [`render.yaml`](./render.yaml).
 - Start command: `npm start`
 - Health check: `GET /api/health`
 
-You'll be prompted to fill in the secret environment variables during Blueprint setup (never committed to the repo): `CLIENT_URL` (your Vercel URL), `MONGODB_URI`, `GEMINI_API_KEY`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
+You'll be prompted to fill in the secret environment variables during Blueprint setup (never committed to the repo): `CLIENT_URL` (your Vercel URL), `MONGODB_URI`, `GEMINI_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`. `FIREBASE_SERVICE_ACCOUNT_JSON` is optional and intentionally not part of the Blueprint — see the Firebase note below.
 
 After both are live, make sure:
 - Render's `CLIENT_URL` matches the exact Vercel production URL (for CORS).
@@ -84,6 +84,6 @@ cd server && npm run build              # tsc type-check/build
 ## Known limitations / external configuration required
 
 - **MongoDB**: without a real `MONGODB_URI`, the backend refuses to start in production (`NODE_ENV=production`) rather than silently running on ephemeral data.
-- **Firebase Admin**: without `FIREBASE_SERVICE_ACCOUNT_JSON`, every route that needs to know "who is this user" fails closed with a `500` and a clear message — it never falls back to trusting a client-supplied user ID.
+- **Firebase Admin (currently disabled)**: this deployment intentionally does not set `FIREBASE_SERVICE_ACCOUNT_JSON`, so every route that needs to know "who is this user" (`/api/chats`, `/api/users`, `/api/payments/*`) fails closed with a `500 AUTH_NOT_CONFIGURED` — it never falls back to trusting a client-supplied user ID. Guest chat (`/api/chat` without sign-in) is unaffected. To re-enable sign-in, set `FIREBASE_SERVICE_ACCOUNT_JSON` on the Render service later; no code changes are needed.
 - **AI provider**: without `GEMINI_API_KEY` (or `OPENAI_API_KEY` if `AI_PROVIDER=openai`), `/api/chat` returns `503 NO_PROVIDER` instead of a canned reply.
 - **Stripe**: checkout and the free-coupon path work without Stripe configured (coupon path), but real subscriptions require test-mode keys and a webhook pointed at the deployed backend.
