@@ -81,6 +81,8 @@ export default function MessageBubble({ message, onRegenerate }: MessageBubblePr
               className={`inline-block rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                 isUser
                   ? "bg-chat-user text-chat-user-foreground rounded-tr-md"
+                  : message.error
+                  ? "bg-destructive/10 border border-destructive/30 text-destructive rounded-tl-md"
                   : "bg-chat-ai text-chat-ai-foreground rounded-tl-md"
               }`}
             >
@@ -90,6 +92,14 @@ export default function MessageBubble({ message, onRegenerate }: MessageBubblePr
                 <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-pre:bg-muted prose-pre:rounded-xl prose-pre:border prose-pre:border-border prose-pre:p-3 prose-code:text-primary prose-code:font-mono prose-code:text-xs prose-headings:text-foreground prose-strong:text-foreground prose-a:text-primary prose-li:my-0.5">
                   <ReactMarkdown>{message.content}</ReactMarkdown>
                 </div>
+              )}
+              {message.error && onRegenerate && (
+                <button
+                  onClick={onRegenerate}
+                  className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-destructive hover:underline"
+                >
+                  <RefreshCw className="w-3 h-3" /> Retry
+                </button>
               )}
             </div>
           )}

@@ -6,6 +6,7 @@ export interface Message {
   sources?: Source[];
   files?: UploadedFile[];
   images?: string[];
+  error?: boolean;
 }
 
 export interface Source {

@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, User, Crown, BarChart3, Mail, LogOut, CreditCard, Calendar, Shield } from "lucide-react";
+import { X, User, Crown, BarChart3, Mail, LogOut, CreditCard, Calendar, Shield, XCircle } from "lucide-react";
+import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { cancelSubscription } from "@/lib/api";
 
 interface ProfilePanelProps {
   isOpen: boolean;
@@ -12,13 +15,30 @@ interface ProfilePanelProps {
 const planLabel: Record<string, string> = { guest: "Guest", basic: "Basic", advanced: "Advanced", pro: "Pro" };
 
 export default function ProfilePanel({ isOpen, onClose, onUpgrade, onOpenAdmin }: ProfilePanelProps) {
-  const { user, profile, logout, trialDaysRemaining, isTrialActive, planLimits } = useAuth();
+  const { user, profile, logout, getIdToken, refreshProfile, trialDaysRemaining, isTrialActive, planLimits } = useAuth();
+  const [cancelling, setCancelling] = useState(false);
 
   const messageCount = profile?.messageCount || 0;
   const dailyUsage = profile?.dailyUsage || 0;
   const limit = planLimits.messages;
   const usagePercent = Math.min((dailyUsage / limit) * 100, 100);
   const currentPlan = profile?.plan || "guest";
+  const canCancel = !user?.isLocal && (currentPlan === "advanced" || currentPlan === "pro");
+
+  const handleCancelSubscription = async () => {
+    if (!window.confirm("Cancel your subscription and move back to the Basic plan?")) return;
+    setCancelling(true);
+    try {
+      const token = await getIdToken();
+      await cancelSubscription(token);
+      await refreshProfile();
+      toast.success("Subscription cancelled. You're back on the Basic plan.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not cancel subscription");
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -126,6 +146,15 @@ export default function ProfilePanel({ isOpen, onClose, onUpgrade, onOpenAdmin }
               >
                 <CreditCard className="w-4 h-4 text-muted-foreground" /> Manage Subscription
               </button>
+              {canCancel && (
+                <button
+                  onClick={handleCancelSubscription}
+                  disabled={cancelling}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted transition-colors text-sm text-destructive disabled:opacity-60"
+                >
+                  <XCircle className="w-4 h-4" /> {cancelling ? "Cancelling..." : "Cancel Subscription"}
+                </button>
+              )}
               {onOpenAdmin && (
                 <button
                   onClick={onOpenAdmin}

@@ -1,12 +1,14 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Paperclip, Image, X, Globe } from "lucide-react";
+import { Send, Paperclip, Image, X, Globe, Square } from "lucide-react";
 import { UploadedFile } from "@/lib/chatData";
 import FileUpload from "./FileUpload";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
   disabled?: boolean;
+  isGenerating?: boolean;
+  onStop?: () => void;
   webSearch: boolean;
   onToggleWebSearch: () => void;
   files: UploadedFile[];
@@ -22,6 +24,8 @@ interface ChatInputProps {
 export default function ChatInput({
   onSend,
   disabled,
+  isGenerating,
+  onStop,
   webSearch,
   files,
   onAddFiles,
@@ -156,14 +160,24 @@ export default function ChatInput({
             className="flex-1 bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground resize-none max-h-[150px] py-2"
           />
 
-          <button
-            onClick={handleSend}
-            disabled={(!value.trim() && images.length === 0) || disabled}
-            className="p-2 rounded-xl gradient-btn text-primary-foreground transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
-            title="Send"
-          >
-            <Send className="w-4 h-4" />
-          </button>
+          {isGenerating ? (
+            <button
+              onClick={onStop}
+              className="p-2 rounded-xl bg-destructive text-destructive-foreground transition-all hover:opacity-90 flex-shrink-0"
+              title="Stop generating"
+            >
+              <Square className="w-4 h-4" fill="currentColor" />
+            </button>
+          ) : (
+            <button
+              onClick={handleSend}
+              disabled={(!value.trim() && images.length === 0) || disabled}
+              className="p-2 rounded-xl gradient-btn text-primary-foreground transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
+              title="Send"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          )}
         </div>
         <p className="text-center text-[10px] text-muted-foreground mt-2">
           Nova Assist can make mistakes. Check important information.

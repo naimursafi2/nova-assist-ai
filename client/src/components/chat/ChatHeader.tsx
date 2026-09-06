@@ -1,11 +1,10 @@
 import { Menu, Crown, Globe } from "lucide-react";
+import LanguageSelector from "./LanguageSelector";
 
 interface ChatHeaderProps {
   title: string;
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
-  selectedModel: string;
-  onSelectModel: (id: string) => void;
   webSearch: boolean;
   onToggleWebSearch: () => void;
   activeMode: string;
@@ -13,7 +12,7 @@ interface ChatHeaderProps {
   onSelectLanguage: (code: string) => void;
   detectedLanguage?: { name: string; flag: string; isBanglish?: boolean } | null;
   currentPlan?: string;
-  messageCount?: number;
+  dailyUsage?: number;
 }
 
 const modeLabels: Record<string, { icon: string; label: string }> = {
@@ -31,9 +30,11 @@ export default function ChatHeader({
   onToggleSidebar,
   webSearch,
   activeMode,
+  selectedLanguage,
+  onSelectLanguage,
   detectedLanguage,
   currentPlan = "basic",
-  messageCount = 0,
+  dailyUsage = 0,
 }: ChatHeaderProps) {
   const mode = modeLabels[activeMode] || modeLabels.chat;
   const limit = planMessageLimits[currentPlan] || 5;
@@ -56,6 +57,7 @@ export default function ChatHeader({
       </div>
 
       <div className="flex items-center gap-2 flex-shrink-0 text-xs text-muted-foreground">
+        <LanguageSelector selectedLanguage={selectedLanguage} onSelectLanguage={onSelectLanguage} />
         {detectedLanguage && (
           <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-accent/10 px-2 py-1 text-accent">
             <span>{detectedLanguage.flag}</span>
@@ -74,7 +76,7 @@ export default function ChatHeader({
         </span>
         {currentPlan !== "pro" && (
           <span className="hidden sm:inline-flex rounded-full bg-muted px-2 py-1">
-            {messageCount}/{limit === 9999 ? "∞" : limit}
+            {dailyUsage}/{limit === 9999 ? "∞" : limit}
           </span>
         )}
       </div>

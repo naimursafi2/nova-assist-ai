@@ -1,12 +1,13 @@
 export const API_URL = import.meta.env.VITE_API_URL || "";
 
-export async function apiRequest<T>(path: string, options?: RequestInit): Promise<T> {
+async function authedRequest<T>(path: string, token: string | null, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
+    ...options,
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options?.headers || {}),
     },
-    ...options,
   });
 
   const data = await response.json().catch(() => ({}));
@@ -26,22 +27,27 @@ export type CheckoutResponse = {
   message?: string;
 };
 
-export function createCheckoutSession(payload: {
-  plan: string;
-  userId: string;
-  email?: string | null;
-  coupon?: string;
-}) {
+export function createCheckoutSession(token: string | null, payload: { plan: string; coupon?: string }): Promise<CheckoutResponse> {
   if (!API_URL) {
-    return Promise.resolve({
+    return Promise.resolve<CheckoutResponse>({
       success: true,
       free: true,
-      message: "Demo plan activated locally. Connect Stripe in the server to accept real payments.",
+      message: "Demo mode: no backend configured. Connect a real Express server URL (VITE_API_URL) to accept real payments.",
     });
   }
-
-  return apiRequest<CheckoutResponse>("/api/payments/create-checkout-session", {
+  return authedRequest<CheckoutResponse>("/api/payments/create-checkout-session", token, {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export function cancelSubscription(token: string | null) {
+  return authedRequest<{ success: boolean }>("/api/payments/cancel-subscription", token, { method: "POST" });
+}
+
+export function fetchAdminUsers(token: string | null) {
+  return authedRequest<Array<{ userId: string; name: string; email: string; plan: string; createdAt: string; lastLoginAt: string; profileImage?: string }>>(
+    "/api/admin/users",
+    token
+  );
 }

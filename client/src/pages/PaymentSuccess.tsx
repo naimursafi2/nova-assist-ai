@@ -5,16 +5,26 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
-  const { user, updatePlan } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const [saved, setSaved] = useState(false);
-  const didSave = useRef(false);
+  const attempts = useRef(0);
   const plan = searchParams.get("plan") || "advanced";
 
+  // Stripe's webhook updates the plan server-side asynchronously after redirect,
+  // so poll briefly instead of writing the plan from the client (which would be spoofable).
   useEffect(() => {
-    if (!user || didSave.current) return;
-    didSave.current = true;
-    updatePlan(plan).finally(() => setSaved(true));
-  }, [plan, updatePlan, user]);
+    if (!user || saved) return;
+    if (profile?.plan === plan) {
+      setSaved(true);
+      return;
+    }
+    if (attempts.current >= 8) return;
+    const timer = setTimeout(() => {
+      attempts.current += 1;
+      refreshProfile();
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [plan, profile?.plan, refreshProfile, saved, user]);
 
   return (
     <main className="min-h-screen gradient-bg flex items-center justify-center px-4">

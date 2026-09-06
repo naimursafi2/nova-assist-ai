@@ -14,11 +14,12 @@ interface ChatWindowProps {
   recentChatsCount: number;
   currentPlan: string;
   onUpgrade: () => void;
+  onRegenerate?: (messageId: string) => void;
 }
 
 export default function ChatWindow({
   messages, isTyping, onPromptClick, activeMode, onSelectMode,
-  onOpenCommandPalette, recentChatsCount, currentPlan, onUpgrade,
+  onOpenCommandPalette, recentChatsCount, currentPlan, onUpgrade, onRegenerate,
 }: ChatWindowProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -43,7 +44,7 @@ export default function ChatWindow({
   return (
     <div className="flex-1 overflow-y-auto scrollbar-thin py-4">
       {messages.map((msg) => (
-        <MessageBubble key={msg.id} message={msg} />
+        <MessageBubble key={msg.id} message={msg} onRegenerate={onRegenerate ? () => onRegenerate(msg.id) : undefined} />
       ))}
       {isTyping && <TypingIndicator />}
       <div ref={bottomRef} />

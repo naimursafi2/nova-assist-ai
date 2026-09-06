@@ -42,6 +42,7 @@ interface ChatSidebarProps {
   loggingIn?: boolean;
   userName?: string;
   userPhotoURL?: string;
+  loadingChats?: boolean;
 }
 
 export default function ChatSidebar({
@@ -65,6 +66,7 @@ export default function ChatSidebar({
   loggingIn,
   userName,
   userPhotoURL,
+  loadingChats,
 }: ChatSidebarProps) {
   const [search, setSearch] = useState("");
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
@@ -137,6 +139,18 @@ export default function ChatSidebar({
           </div>
 
           <div className="flex-1 overflow-y-auto scrollbar-thin px-2 space-y-1">
+            {loadingChats ? (
+              <div className="space-y-1.5 px-1 pt-2">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="h-8 rounded-lg bg-muted/60 animate-pulse" />
+                ))}
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="px-3 pt-8 text-center text-xs text-muted-foreground">
+                {search ? "No chats match your search." : "No chats yet. Start a new one above."}
+              </div>
+            ) : (
+              <>
             {pinned.length > 0 && (
               <>
                 <p className="px-2 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Pinned</p>
@@ -177,6 +191,8 @@ export default function ChatSidebar({
                 onRenameSubmit={() => submitRename(chat.id)}
               />
             ))}
+              </>
+            )}
           </div>
 
           <div className="p-3 border-t border-border space-y-1">

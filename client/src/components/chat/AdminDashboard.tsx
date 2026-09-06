@@ -1,34 +1,40 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Users, Crown, Calendar, Mail, Shield } from "lucide-react";
-import { ref, get } from "firebase/database";
-import { db } from "@/lib/firebase";
-import { UserProfile } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { fetchAdminUsers } from "@/lib/api";
 
 interface AdminDashboardProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+interface AdminUserRow {
+  userId: string;
+  name: string;
+  email: string;
+  plan: string;
+  profileImage?: string;
+  createdAt: string;
+  lastLoginAt: string;
+}
+
 export default function AdminDashboard({ isOpen, onClose }: AdminDashboardProps) {
-  const [users, setUsers] = useState<UserProfile[]>([]);
+  const { getIdToken } = useAuth();
+  const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
     setLoading(true);
-    const usersRef = ref(db, "users");
-    get(usersRef)
-      .then((snapshot) => {
-        if (snapshot.exists()) {
-          const data = snapshot.val();
-          const list = Object.values(data) as UserProfile[];
-          list.sort((a, b) => new Date(b.lastLoginAt || b.createdAt).getTime() - new Date(a.lastLoginAt || a.createdAt).getTime());
-          setUsers(list);
-        }
-      })
+    setError(null);
+    getIdToken()
+      .then((token) => fetchAdminUsers(token))
+      .then((data) => setUsers(data as AdminUserRow[]))
+      .catch((err) => setError(err instanceof Error ? err.message : "Could not load users"))
       .finally(() => setLoading(false));
-  }, [isOpen]);
+  }, [isOpen, getIdToken]);
 
   const planColor: Record<string, string> = {
     guest: "bg-muted text-muted-foreground",
@@ -54,7 +60,6 @@ export default function AdminDashboard({ isOpen, onClose }: AdminDashboardProps)
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-2xl max-h-[80vh] glass-heavy border border-border rounded-2xl float-shadow overflow-hidden flex flex-col"
           >
-            {/* Header */}
             <div className="p-4 border-b border-border flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Shield className="w-5 h-5 text-primary" />
@@ -65,7 +70,6 @@ export default function AdminDashboard({ isOpen, onClose }: AdminDashboardProps)
               </button>
             </div>
 
-            {/* Stats */}
             <div className="p-4 grid grid-cols-2 gap-3">
               <div className="p-3 rounded-xl bg-muted/50 border border-border text-center">
                 <Users className="w-5 h-5 text-primary mx-auto mb-1" />
@@ -79,10 +83,13 @@ export default function AdminDashboard({ isOpen, onClose }: AdminDashboardProps)
               </div>
             </div>
 
-            {/* User List */}
             <div className="flex-1 overflow-y-auto px-4 pb-4">
               {loading ? (
                 <div className="text-center py-8 text-muted-foreground text-sm">Loading users...</div>
+              ) : error ? (
+                <div className="text-center py-8 text-destructive text-sm">{error}</div>
+              ) : users.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground text-sm">No users yet.</div>
               ) : (
                 <div className="space-y-2">
                   {users.map((u) => (

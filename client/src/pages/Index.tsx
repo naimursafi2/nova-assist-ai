@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Chat, Message, UploadedFile, aiModes as allModes } from "@/lib/chatData";
 import { detectLanguage } from "@/lib/languageUtils";
-import { streamChat, ChatMessage } from "@/lib/streamChat";
+import { streamChat, ChatMessage, StreamChatError } from "@/lib/streamChat";
 import { useAuth } from "@/contexts/AuthContext";
-import { useFirebaseChats } from "@/hooks/useFirebaseChats";
+import { useChats } from "@/hooks/useChats";
 import { createCheckoutSession } from "@/lib/api";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import ChatHeader from "@/components/chat/ChatHeader";
@@ -23,8 +23,8 @@ const planLevel: Record<string, number> = { guest: 0, basic: 1, advanced: 2, pro
 const planMessageLimits: Record<string, number> = { guest: 5, basic: 50, advanced: 200, pro: 9999 };
 
 export default function Index() {
-  const { user, profile, loginWithGoogle, logout, incrementUsage, updatePlan, loggingIn } = useAuth();
-  const { chats, setChats, loadingChats, saveChat, deleteChat: firebaseDeleteChat, addChat } = useFirebaseChats();
+  const { user, profile, loginWithGoogle, logout, getIdToken, refreshProfile, bumpLocalUsage, loggingIn, syncError } = useAuth();
+  const { chats, setChats, loadingChats, deleteChat: removeChat, addChat } = useChats();
 
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -47,32 +47,98 @@ export default function Index() {
   const [selectedLanguage, setSelectedLanguage] = useState("auto");
   const [detectedLanguage, setDetectedLanguage] = useState<{ name: string; flag: string; isBanglish?: boolean } | null>(null);
   const streamingRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
 
   const currentPlan = profile?.plan || "guest";
-  const isLoggedIn = !!user;
-  const messageCount = profile?.messageCount || 0;
+  const isLoggedIn = !!user && !user.isLocal;
+  const dailyUsage = profile?.dailyUsage || 0;
+  const isAdmin = profile?.role === "admin";
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
   }, [darkMode]);
 
+  useEffect(() => {
+    if (syncError) toast.warning(syncError);
+  }, [syncError]);
+
   const activeChat = chats.find((c) => c.id === activeChatId) || null;
 
   const buildApiMessages = (chatMessages: Message[]): ChatMessage[] => {
-    return chatMessages.map((m) => ({
-      role: m.role === "user" ? "user" as const : "assistant" as const,
-      content: m.content,
-    }));
+    return chatMessages
+      .filter((m) => m.content && !m.error)
+      .map((m) => ({
+        role: m.role === "user" ? ("user" as const) : ("assistant" as const),
+        content: m.content,
+      }));
   };
+
+  const runAssistant = useCallback(
+    (targetChatId: string, aiMsgId: string, apiMessages: ChatMessage[]) => {
+      setIsTyping(true);
+      streamingRef.current = true;
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      let accumulated = "";
+
+      streamChat({
+        messages: apiMessages,
+        mode: activeMode,
+        model: selectedModel,
+        language: selectedLanguage,
+        getAuthToken: getIdToken,
+        signal: controller.signal,
+        onDelta: (chunk) => {
+          accumulated += chunk;
+          const currentContent = accumulated;
+          setChats((prev) =>
+            prev.map((c) => {
+              if (c.id !== targetChatId) return c;
+              return { ...c, messages: c.messages.map((m) => (m.id === aiMsgId ? { ...m, content: currentContent } : m)) };
+            })
+          );
+        },
+        onDone: () => {
+          setIsTyping(false);
+          streamingRef.current = false;
+          abortControllerRef.current = null;
+          bumpLocalUsage();
+        },
+        onError: (error: StreamChatError) => {
+          setIsTyping(false);
+          streamingRef.current = false;
+          abortControllerRef.current = null;
+          const stopped = error.code === "ABORTED";
+          if (!stopped) toast.error(error.message);
+          setChats((prev) =>
+            prev.map((c) => {
+              if (c.id !== targetChatId) return c;
+              return {
+                ...c,
+                messages: c.messages.map((m) =>
+                  m.id === aiMsgId
+                    ? stopped
+                      ? { ...m, content: accumulated || "_Generation stopped._", error: false }
+                      : { ...m, content: `⚠️ ${error.message}`, error: true }
+                    : m
+                ),
+              };
+            })
+          );
+        },
+      });
+    },
+    [activeMode, selectedModel, selectedLanguage, getIdToken, setChats, bumpLocalUsage]
+  );
 
   const handleSend = useCallback(
     (content: string) => {
       if (streamingRef.current) return;
 
       const limit = planMessageLimits[currentPlan] || 5;
-      if (messageCount >= limit) {
+      if (dailyUsage >= limit) {
         setShowSubscription(true);
         return;
       }
@@ -97,7 +163,6 @@ export default function Index() {
 
       setUploadedFiles([]);
       setUploadedImages([]);
-      incrementUsage();
 
       let targetChatId = activeChatId;
 
@@ -112,79 +177,41 @@ export default function Index() {
         setActiveChatId(newChat.id);
         targetChatId = newChat.id;
       } else {
-        setChats((prev) =>
-          prev.map((c) =>
-            c.id === activeChatId ? { ...c, messages: [...c.messages, userMsg] } : c
-          )
-        );
+        setChats((prev) => prev.map((c) => (c.id === activeChatId ? { ...c, messages: [...c.messages, userMsg] } : c)));
       }
 
-      setIsTyping(true);
-      streamingRef.current = true;
-
       const aiMsgId = (Date.now() + 1).toString();
-
-      const currentChat = chats.find(c => c.id === targetChatId);
+      const currentChat = chats.find((c) => c.id === targetChatId);
       const allMessages = currentChat ? [...currentChat.messages, userMsg] : [userMsg];
       const apiMessages = buildApiMessages(allMessages);
 
-      const emptyAiMsg: Message = {
-        id: aiMsgId,
-        role: "ai",
-        content: "",
-        timestamp: new Date(),
-      };
-      setChats((prev) =>
-        prev.map((c) =>
-          c.id === targetChatId ? { ...c, messages: [...c.messages, emptyAiMsg] } : c
-        )
-      );
+      const emptyAiMsg: Message = { id: aiMsgId, role: "ai", content: "", timestamp: new Date() };
+      setChats((prev) => prev.map((c) => (c.id === targetChatId ? { ...c, messages: [...c.messages, emptyAiMsg] } : c)));
 
-      let accumulated = "";
-
-      streamChat({
-        messages: apiMessages,
-        mode: activeMode,
-        onDelta: (chunk) => {
-          accumulated += chunk;
-          const currentContent = accumulated;
-          setChats((prev) =>
-            prev.map((c) => {
-              if (c.id !== targetChatId) return c;
-              return {
-                ...c,
-                messages: c.messages.map((m) =>
-                  m.id === aiMsgId ? { ...m, content: currentContent } : m
-                ),
-              };
-            })
-          );
-        },
-        onDone: () => {
-          setIsTyping(false);
-          streamingRef.current = false;
-        },
-        onError: (error) => {
-          setIsTyping(false);
-          streamingRef.current = false;
-          toast.error(error);
-          setChats((prev) =>
-            prev.map((c) => {
-              if (c.id !== targetChatId) return c;
-              return {
-                ...c,
-                messages: c.messages.map((m) =>
-                  m.id === aiMsgId
-                    ? { ...m, content: "⚠️ " + error + "\n\nPlease try again." }
-                    : m
-                ),
-              };
-            })
-          );
-        },
-      });
+      runAssistant(targetChatId!, aiMsgId, apiMessages);
     },
-    [activeChatId, uploadedFiles, uploadedImages, selectedLanguage, activeMode, currentPlan, messageCount, chats, addChat, setChats, incrementUsage]
+    [activeChatId, uploadedFiles, uploadedImages, selectedLanguage, currentPlan, dailyUsage, chats, addChat, setChats, runAssistant]
+  );
+
+  const handleStop = useCallback(() => {
+    abortControllerRef.current?.abort();
+  }, []);
+
+  const handleRegenerate = useCallback(
+    (aiMsgId: string) => {
+      if (streamingRef.current || !activeChat) return;
+      const idx = activeChat.messages.findIndex((m) => m.id === aiMsgId);
+      if (idx === -1) return;
+      const priorMessages = activeChat.messages.slice(0, idx);
+      const apiMessages = buildApiMessages(priorMessages);
+      if (apiMessages.length === 0 || apiMessages[apiMessages.length - 1].role !== "user") return;
+
+      setChats((prev) =>
+        prev.map((c) => (c.id !== activeChat.id ? c : { ...c, messages: c.messages.map((m) => (m.id === aiMsgId ? { ...m, content: "", error: false } : m)) }))
+      );
+      runAssistant(activeChat.id, aiMsgId, apiMessages);
+    },
+    [activeChat, setChats, runAssistant]
   );
 
   const handleNewChat = () => {
@@ -193,7 +220,7 @@ export default function Index() {
   };
 
   const handleDeleteChat = (id: string) => {
-    firebaseDeleteChat(id);
+    removeChat(id);
     if (activeChatId === id) setActiveChatId(null);
   };
 
@@ -239,12 +266,12 @@ export default function Index() {
   }, [currentPlan]);
 
   const handleSelectPlan = useCallback(async (plan: string, coupon?: string) => {
-    if (!user) {
+    if (!user || user.isLocal) {
       setCheckoutError("Please sign in before upgrading.");
       try {
         await loginWithGoogle();
-      } catch {
-        toast.error("Sign in was cancelled");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Sign in failed");
       }
       return;
     }
@@ -253,15 +280,11 @@ export default function Index() {
     setCheckoutError(null);
 
     try {
-      const checkout = await createCheckoutSession({
-        plan,
-        userId: user.uid,
-        email: user.email || profile?.email,
-        coupon,
-      });
+      const token = await getIdToken();
+      const checkout = await createCheckoutSession(token, { plan, coupon });
 
       if (checkout.free) {
-        await updatePlan(plan);
+        await refreshProfile();
         toast.success("Plan activated");
         setShowSubscription(false);
         return;
@@ -277,7 +300,7 @@ export default function Index() {
     } finally {
       setCheckoutPlan(null);
     }
-  }, [loginWithGoogle, profile?.email, updatePlan, user]);
+  }, [getIdToken, loginWithGoogle, refreshProfile, user]);
 
   const handleCommandAction = useCallback((action: string, payload?: string) => {
     switch (action) {
@@ -350,10 +373,10 @@ export default function Index() {
         break;
       }
       case "admin":
-        setShowAdmin(true);
+        if (isAdmin) setShowAdmin(true);
         break;
     }
-  }, [handleSend]);
+  }, [handleSend, isAdmin]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -386,10 +409,11 @@ export default function Index() {
         currentPlan={currentPlan}
         onUpgrade={() => setShowSubscription(true)}
         isLoggedIn={isLoggedIn}
-        onLogin={() => loginWithGoogle()}
+        onLogin={() => loginWithGoogle().catch((error) => toast.error(error instanceof Error ? error.message : "Sign in failed"))}
         loggingIn={loggingIn}
         userName={profile?.name || user?.displayName || undefined}
         userPhotoURL={profile?.profileImage || user?.photoURL || undefined}
+        loadingChats={loadingChats}
       />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -401,8 +425,6 @@ export default function Index() {
           title={activeChat?.title || ""}
           sidebarOpen={sidebarOpen}
           onToggleSidebar={() => setSidebarOpen(true)}
-          selectedModel={selectedModel}
-          onSelectModel={setSelectedModel}
           webSearch={webSearch}
           onToggleWebSearch={() => setWebSearch(!webSearch)}
           activeMode={activeMode}
@@ -410,7 +432,7 @@ export default function Index() {
           onSelectLanguage={setSelectedLanguage}
           detectedLanguage={detectedLanguage}
           currentPlan={currentPlan}
-          messageCount={messageCount}
+          dailyUsage={dailyUsage}
         />
         <ChatWindow
           messages={activeChat?.messages || []}
@@ -422,10 +444,13 @@ export default function Index() {
           recentChatsCount={chats.length}
           currentPlan={currentPlan}
           onUpgrade={() => setShowSubscription(true)}
+          onRegenerate={handleRegenerate}
         />
         <ChatInput
           onSend={handleSend}
           disabled={isTyping}
+          isGenerating={isTyping}
+          onStop={handleStop}
           webSearch={webSearch}
           onToggleWebSearch={() => setWebSearch(!webSearch)}
           files={uploadedFiles}
@@ -476,9 +501,9 @@ export default function Index() {
         isOpen={showProfile}
         onClose={() => setShowProfile(false)}
         onUpgrade={() => { setShowProfile(false); setShowSubscription(true); }}
-        onOpenAdmin={() => { setShowProfile(false); setShowAdmin(true); }}
+        onOpenAdmin={isAdmin ? () => { setShowProfile(false); setShowAdmin(true); } : undefined}
       />
-      <AdminDashboard isOpen={showAdmin} onClose={() => setShowAdmin(false)} />
+      {isAdmin && <AdminDashboard isOpen={showAdmin} onClose={() => setShowAdmin(false)} />}
     </div>
   );
 }

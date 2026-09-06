@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from "react";
 import { onAuthStateChanged, signInWithPopup, signOut, User as FirebaseUser } from "firebase/auth";
-import { ref, get, set, update } from "firebase/database";
-import { auth, db, googleProvider } from "@/lib/firebase";
+import { auth, googleProvider } from "@/lib/firebase";
+
+const API_URL = import.meta.env.VITE_API_URL || "";
 
 export interface UserProfile {
   userId: string;
@@ -9,6 +10,7 @@ export interface UserProfile {
   email: string;
   profileImage: string;
   plan: string;
+  role?: string;
   trialStartDate: string;
   trialEndDate: string;
   dailyUsage: number;
@@ -16,18 +18,21 @@ export interface UserProfile {
   lastUsageReset: string;
   createdAt: string;
   lastLoginAt: string;
-  role?: string;
 }
+
+export type AuthUser = Pick<FirebaseUser, "uid" | "displayName" | "email" | "photoURL"> & { isLocal?: boolean };
 
 interface AuthContextType {
   user: AuthUser | null;
   profile: UserProfile | null;
   loading: boolean;
   loggingIn: boolean;
+  syncError: string | null;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
-  incrementUsage: () => Promise<boolean>;
-  updatePlan: (plan: string) => Promise<void>;
+  getIdToken: () => Promise<string | null>;
+  refreshProfile: () => Promise<void>;
+  bumpLocalUsage: () => void;
   trialDaysRemaining: number;
   isTrialActive: boolean;
   planLimits: { messages: number };
@@ -41,7 +46,6 @@ const planMessageLimits: Record<string, number> = {
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
-type AuthUser = Pick<FirebaseUser, "uid" | "displayName" | "email" | "photoURL"> & { isLocal?: boolean };
 const LOCAL_USER_KEY = "nova-local-user";
 const LOCAL_PROFILE_KEY = "nova-local-profile";
 
@@ -51,92 +55,105 @@ export function useAuth() {
   return ctx;
 }
 
+function freshLocalProfile(uid: string, name: string, email: string): UserProfile {
+  const now = new Date();
+  const trialEnd = new Date(now);
+  trialEnd.setDate(trialEnd.getDate() + 30);
+  return {
+    userId: uid,
+    name,
+    email,
+    profileImage: "",
+    plan: "basic",
+    role: "user",
+    trialStartDate: now.toISOString(),
+    trialEndDate: trialEnd.toISOString(),
+    dailyUsage: 0,
+    messageCount: 0,
+    lastUsageReset: now.toISOString().split("T")[0],
+    createdAt: now.toISOString(),
+    lastLoginAt: now.toISOString(),
+  };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [loggingIn, setLoggingIn] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const firebaseUserRef = useRef<FirebaseUser | null>(null);
 
-  const createLocalProfile = (name = "Local User") => {
-    const now = new Date();
-    const trialEnd = new Date(now);
-    trialEnd.setDate(trialEnd.getDate() + 30);
-    const localUser: AuthUser = {
-      uid: "local-user",
-      displayName: name,
-      email: "local@nova.app",
-      photoURL: "",
-      isLocal: true,
-    };
-    const storedProfile = localStorage.getItem(LOCAL_PROFILE_KEY);
-    const localProfile: UserProfile = storedProfile
-      ? JSON.parse(storedProfile)
-      : {
-          userId: localUser.uid,
-          name,
-          email: localUser.email || "",
-          profileImage: "",
-          plan: "basic",
-          trialStartDate: now.toISOString(),
-          trialEndDate: trialEnd.toISOString(),
-          dailyUsage: 0,
-          messageCount: 0,
-          lastUsageReset: now.toISOString().split("T")[0],
-          createdAt: now.toISOString(),
-          lastLoginAt: now.toISOString(),
-        };
+  const createLocalProfile = useCallback((name = "Local User") => {
+    const localUser: AuthUser = { uid: "local-user", displayName: name, email: "local@nova.app", photoURL: "", isLocal: true };
+    const stored = localStorage.getItem(LOCAL_PROFILE_KEY);
+    const localProfile = stored ? (JSON.parse(stored) as UserProfile) : freshLocalProfile(localUser.uid, name, localUser.email || "");
     localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(localUser));
     localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(localProfile));
     setUser(localUser);
     setProfile(localProfile);
     return { user: localUser, profile: localProfile };
-  };
+  }, []);
 
-  const loadOrCreateProfile = async (fbUser: FirebaseUser) => {
-    const userRef = ref(db, `users/${fbUser.uid}`);
-    const snapshot = await get(userRef);
-    const now = new Date();
-
-    if (snapshot.exists()) {
-      const data = snapshot.val() as UserProfile;
-      const today = now.toISOString().split("T")[0];
-      const updates: Partial<UserProfile> = { lastLoginAt: now.toISOString() };
-      if (data.lastUsageReset !== today) {
-        updates.dailyUsage = 0;
-        updates.lastUsageReset = today;
-      }
-      await update(userRef, updates);
-      setProfile({ ...data, ...updates });
-    } else {
-      const trialEnd = new Date(now);
-      trialEnd.setDate(trialEnd.getDate() + 30);
-
-      const newProfile: UserProfile = {
-        userId: fbUser.uid,
-        name: fbUser.displayName || "User",
-        email: fbUser.email || "",
-        profileImage: fbUser.photoURL || "",
-        plan: "basic",
-        trialStartDate: now.toISOString(),
-        trialEndDate: trialEnd.toISOString(),
-        dailyUsage: 0,
-        messageCount: 0,
-        lastUsageReset: now.toISOString().split("T")[0],
-        createdAt: now.toISOString(),
-        lastLoginAt: now.toISOString(),
-      };
-      await set(userRef, newProfile);
-      setProfile(newProfile);
+  const getIdToken = useCallback(async (): Promise<string | null> => {
+    if (!firebaseUserRef.current) return null;
+    try {
+      return await firebaseUserRef.current.getIdToken();
+    } catch {
+      return null;
     }
-  };
+  }, []);
+
+  const syncProfileFromServer = useCallback(async (fbUser: FirebaseUser) => {
+    if (!API_URL) {
+      setSyncError("VITE_API_URL is not set. Signed in, but your plan, usage, and chats will only be saved on this device.");
+      createLocalProfile(fbUser.displayName || "User");
+      return;
+    }
+    try {
+      const token = await fbUser.getIdToken();
+      const response = await fetch(`${API_URL}/api/users/sync`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: fbUser.displayName, profileImage: fbUser.photoURL }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || `Server sync failed (${response.status})`);
+      }
+      const data = (await response.json()) as UserProfile;
+      setProfile(data);
+      setSyncError(null);
+    } catch (error) {
+      setSyncError(
+        (error instanceof Error ? error.message : "Could not sync your profile with the server.") +
+          " Your plan, usage, and chats will only be saved on this device until this is resolved."
+      );
+      createLocalProfile(fbUser.displayName || "User");
+    }
+  }, [createLocalProfile]);
+
+  const refreshProfile = useCallback(async () => {
+    if (!API_URL || !firebaseUserRef.current) return;
+    try {
+      const token = await firebaseUserRef.current.getIdToken();
+      const response = await fetch(`${API_URL}/api/users/${firebaseUserRef.current.uid}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) return;
+      const data = (await response.json()) as UserProfile;
+      setProfile(data);
+    } catch {
+      /* keep existing profile on transient failure */
+    }
+  }, []);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
+      firebaseUserRef.current = fbUser;
       if (fbUser) {
-        setUser(fbUser);
-        await loadOrCreateProfile(fbUser).catch(() => {
-          createLocalProfile(fbUser.displayName || "Local User");
-        });
+        setUser({ uid: fbUser.uid, displayName: fbUser.displayName, email: fbUser.email, photoURL: fbUser.photoURL });
+        await syncProfileFromServer(fbUser);
       } else {
         const localUser = localStorage.getItem(LOCAL_USER_KEY);
         const localProfile = localStorage.getItem(LOCAL_PROFILE_KEY);
@@ -151,61 +168,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoggingIn(false);
     });
     return unsub;
-  }, []);
+  }, [createLocalProfile, syncProfileFromServer]);
 
   const loginWithGoogle = async () => {
     setLoggingIn(true);
     try {
       await signInWithPopup(auth, googleProvider);
-    } catch (err) {
-      createLocalProfile();
+    } catch {
       setLoggingIn(false);
+      throw new Error("Google sign-in was cancelled or failed.");
     }
   };
 
   const logout = async () => {
     localStorage.removeItem(LOCAL_USER_KEY);
     localStorage.removeItem(LOCAL_PROFILE_KEY);
+    setSyncError(null);
     await signOut(auth).catch(() => undefined);
     createLocalProfile();
   };
 
-  const incrementUsage = async (): Promise<boolean> => {
-    const currentUser = user || createLocalProfile().user;
-    const currentProfile = profile || createLocalProfile().profile;
-    const limit = planMessageLimits[currentProfile.plan] || 5;
-    if (currentProfile.dailyUsage >= limit) return false;
-
-    const updated = {
-      ...currentProfile,
-      dailyUsage: currentProfile.dailyUsage + 1,
-      messageCount: currentProfile.messageCount + 1,
-    };
-    if (currentUser.isLocal) {
-      localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(updated));
-    } else {
-      await update(ref(db, `users/${currentUser.uid}`), {
-        dailyUsage: updated.dailyUsage,
-        messageCount: updated.messageCount,
-      }).catch(() => undefined);
+  // Optimistic local bump right after a successful AI reply so the UI feels instant;
+  // the server is the authority and increments the real counters on /api/chat.
+  const bumpLocalUsage = useCallback(() => {
+    setProfile((prev) => (prev ? { ...prev, dailyUsage: prev.dailyUsage + 1, messageCount: prev.messageCount + 1 } : prev));
+    if (user?.isLocal) {
+      const stored = localStorage.getItem(LOCAL_PROFILE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as UserProfile;
+        parsed.dailyUsage += 1;
+        parsed.messageCount += 1;
+        localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(parsed));
+      }
     }
-    setProfile(updated);
-    setUser(currentUser);
-    return true;
-  };
-
-  const updatePlan = async (plan: string) => {
-    const currentUser = user || createLocalProfile().user;
-    const currentProfile = profile || createLocalProfile().profile;
-    const updated = { ...currentProfile, plan };
-    if (currentUser.isLocal) {
-      localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(updated));
-    } else {
-      await update(ref(db, `users/${currentUser.uid}`), { plan }).catch(() => undefined);
-    }
-    setUser(currentUser);
-    setProfile(updated);
-  };
+  }, [user?.isLocal]);
 
   const trialEnd = profile ? new Date(profile.trialEndDate) : new Date();
   const now = new Date();
@@ -219,10 +215,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         loading,
         loggingIn,
+        syncError,
         loginWithGoogle,
         logout,
-        incrementUsage,
-        updatePlan,
+        getIdToken,
+        refreshProfile,
+        bumpLocalUsage,
         trialDaysRemaining,
         isTrialActive,
         planLimits: { messages: planMessageLimits[profile?.plan || "guest"] },
