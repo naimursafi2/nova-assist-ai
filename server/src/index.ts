@@ -1,7 +1,7 @@
 import express, { type NextFunction, type Request, type Response } from "express";
 import mongoose from "mongoose";
 import cors from "cors";
-import helmet from "helmet";
+import * as helmetModule from "helmet";
 import morgan from "morgan";
 import dotenv from "dotenv";
 import Stripe from "stripe";
@@ -10,6 +10,12 @@ import { isFirebaseAdminConfigured, verifyIdToken } from "./firebaseAdmin.js";
 import { streamGeminiChat } from "./gemini.js";
 import { streamOpenAIChat } from "./openaiProvider.js";
 import { AIProviderError, classifyProviderError, type ChatTurn } from "./aiTypes.js";
+
+// Imported as a namespace and unwrapped explicitly: helmet's package.json "exports"
+// map has no "types" condition, which makes `import helmet from "helmet"` resolve to
+// an uncallable namespace type under some npm/TypeScript installs (default-import
+// interop ambiguity for dual ESM/CJS packages). `.default` is the real function.
+const helmet = helmetModule.default;
 
 dotenv.config();
 
